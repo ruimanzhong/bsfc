@@ -1,0 +1,200 @@
+---
+title: "Spatial_functional_clustering_for_Poisson_data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Spatial_functional_clustering_for_Poisson_data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+All simulated datasets are included in the folder \textcolor{red}{Sim-Data}. Here, we take the shifted Doppler signals with b-splines basis functions as an example to illustrate the usage of the Fclust-RST method. 
+
+- We first install and load the required R packages:
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+rm(list = ls())
+packages = c( "gridExtra", "deldir", "fields", "igraph",  "devtools", "ggplot2", "Matrix.utils", "grid", 
+             "parallel", "class", "spgwr", 'sf',
+             "salso", 'spfc',
+             "fda","mclust")
+
+## Now load or install&load all packages
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      # install.packages(x, dependencies = TRUE, 
+      #          INSTALL_opts = '--no-lock', 
+      #          repos = "http://cran.us.r-project.org")
+      library(x, character.only = TRUE)
+    }else
+      library(x, character.only = TRUE)
+  }
+)
+path_proj <- '~/Documents/project3'
+path_data <- file.path(path_proj, "data")
+path_raw <- file.path(path_data, "raw")
+path_sim <- file.path(path_data, "simulated")
+path_res <- file.path(path_proj, "data", "result",".RData")
+path_im <- file.path(path_data,  "image")
+```
+
+- Read the R code for implementing Fclust-RST:
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+##Load data
+data = readRDS(file.path(path_sim, 'sim-poi-5c.rds'))
+map <-  readRDS(file.path(path_raw, "spatial-domain-clusters.rds"))
+cluster_true = data$cluster
+Y = t(data$Y)
+##ns: number of locations, nt: number of time points
+ns=dim(Y)[1]; nt=dim(Y)[2]  
+## build design matrix
+time = seq(0, 1, length.out = nt)
+# compute fixed effects
+X = poly(time, 2, raw = TRUE, simple = TRUE)
+colnames(X) <- c('X1', 'X2')
+population <- matrix(map$population, nrow = ns, ncol = nt, byrow = FALSE)
+# vec_Y = as.integer(as.vector(t(Y)))
+```
+
+- Obtain initial estimates for the between-cluster parameters. 
+   \begin{itemize}
+     \item  The hyperparameter $\mathcal{G}$ is fixed to be the true graph $\mathcal{G}_0$ used for generating the cluster-wise constant Doppler signals.      \item  The initial values of wavelet coefficients, $\{\hat{\boldsymbol{\beta}}(\mathbf{s})\}$, are obtained by using the least-square estimates for each location $\mathbf{s}$. 
+     \item  For each edge of $\mathcal{G}$ connecting $\mathbf{s}$ and $\mathbf{s}^{\prime}$, the Euclidean distance of $\hat{\boldsymbol{\beta}}(\mathbf{s})$ and $\hat{\boldsymbol{\beta}}(\mathbf{s}^{\prime})$ is used as its edge weight. Then, the initial minimum spanning tree (MST), $\mathcal{T}^{(0)}$, is obtained based on $\mathcal{G}$ and its assigned edge weights. 
+     \item  By removing $(k_p^{(0)}-1)$ edges of $\mathcal{T}^{(0)}$, we obtain $k_p^{(0)}$ initial clusters. 
+  \end{itemize}
+```{r echo=TRUE, warning=FALSE}
+# Build MST 
+set.seed(43)
+coords <- st_coordinates(st_centroid(map)[,3])
+# create graph
+adjacency_matrix <- sf::st_touches(map) %>% as("matrix")
+graph0 <- graph.adjacency(adjacency_matrix, mode = "undirected", diag = FALSE)
+
+##Initial beta estimates
+ratio = matrix(0,nrow = ns, ncol = nt)
+for(i in 1:ns){ratio[i,] = as.matrix(Y[i,]/population[i])}
+beta.ini=t(t(X)%*%t(log(Y+1))) 
+
+######  Construct an initial MST
+beta.ini= ginv(t(X) %*% X) %*% t(X) %*% t(log(ratio)) # p * s
+beta.ini = t(beta.ini) 
+
+inc.mat=get.edgelist(graph0, names = F)
+weights=sqrt(sum(beta.ini[inc.mat[,1]]-beta.ini[inc.mat[,2]])^2)
+E(graph0)$weights=weights
+mstgraph.ini=mst(graph0)
+
+V(mstgraph.ini)$vid=1:ns
+rmid=order(E(mstgraph.ini)$weights, decreasing = TRUE)[1:6]
+
+graph_comp=components(delete.edges(mstgraph.ini, rmid))
+membership.ini=graph_comp$membership
+
+membership=membership.ini ##cluster membership
+mstgraph=mstgraph.ini     ## initial MST
+
+```
+We could compare the true cluster label with the initial label
+- Obtain the estimates for within-cluster parameters:
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+clust_uniq=sort(unique(membership.ini)); k=length(clust_uniq)
+target <- list(Y = Y, X = time)
+hyperpar<-list("c"= 0.5)
+###List of initial values
+init_val<-list("beta"=beta.ini, 
+               "cluster"=membership.ini, 
+               "trees"=mstgraph.ini)
+inla.extra <- list(family = "poisson",N = population, correction = T)
+formula <- Yk~ 1  +f(COV, model = "rw1", scale.model = TRUE,hyper = list(theta = list(prior="pc.prec", param=c(1,0.01))))+ f(idx, model = 'iid',hyper = list(prec = list(prior = "loggamma", param = c(0.01, 0.01))))
+MCMC= 1000; BURNIN=100; THIN=1
+```
+- Run the Fclust-RST method:
+```{r message=TRUE, warning=FALSE, include=FALSE}
+# library(RhpcBLASctl)
+# 
+# blas_get_num_procs()
+# blas_set_num_threads(6)
+system.time({
+     Fun_Wave_Clust(target,formula, inla.extra, graph0, init_val, hyperpar, MCMC, BURNIN, THIN, path_res, seed = 1234)
+ })
+```
+
+- Plot the clustering results:
+
+```{r echo=TRUE, message=FALSE}
+
+#####Load the results of Fclust-RST
+load(file.path(path_res))
+cluster_out_burn = cluster_out[1:10,]
+brazil$cluster_true = cluster_true
+pihat <- salso::psm(cluster_out_burn)
+clust_idx=which.min(salso::binder(cluster_out_burn, pihat))
+clust_res=cluster_out_burn[clust_idx,]
+brazil$cluster_true = cluster_true
+###Obtain the adjusted Rand index with the true partition
+adjustedRandIndex(clust_res, cluster_true)
+n.sample=(MCMC-BURNIN)/THIN ###Number of posterior samples
+png(file.path(path_im,'Cluster Procedure AR.png'))
+print(fields::image.plot(cluster_out, main="Cluster Procedure", axes=TRUE, xlab = 'Iterations', ylab = 'Memembership'))
+dev.off()
+```
+
+- Plot the estimated curve (in red) versus the observed ones (in grey) for each cluster:
+
+```{r echo=TRUE, message=FALSE}
+n.cores = 6
+cl <- snow:::makeCluster(n.cores)
+  clusterExport(cl, "Para_re2all")
+result=parLapply(cl, 1:p,evalLogLike_each_INLA, Y, X, population, as.numeric(clust_res), a0 = 0.1, b0 = 0.1, order = NULL, detailed = T
+)
+p = max(clust_res)
+col_n=gray.colors(80, alpha=0.5)
+
+ymin=min(ratio); ymax=max(ratio)
+png(width = 960, height = 480, file.path(path_im,'Clustered Function results AR.png'))
+par(mfrow = c(1,4))
+time = seq(0,1, length.out = nt)
+for(k in 1:p){
+IND=which(clust_res==k)
+plot(time, ratio[IND[1],], "l", col=col_n[40], xlab="t", ylab="f(t)",
+main=sprintf("Cluster %d", k), ylim=c(ymin, ymax))
+m <- t(matrix(result[[k]]$summary.fitted.values$mean, nrow = nt))
+for(i in 2:length(IND))
+lines(time, ratio[IND[i],], col=col_n[40])
+lines(time, colMeans(m), col="red")
+}
+dev.off()
+```
+
+```{r}
+nt = 100
+X = seq(0, 1, length.out = 100)
+
+```
+
+```{r}
+n.cores = 6
+cl <- snow:::makeCluster(n.cores)
+  clusterExport(cl, "Para_re2all")
+M_true =  evalLogLike_all_parallel2(Y, X,population = population,as.numeric(cluster_true), cl, a0 = 0.1, b0 = 0.1, order = 2, detailed = F)
+M1 = evalLogLike_all_parallel2(Y, X,population = population,1:27, cl, a0 = 0.1, b0 = 0.1, order = 2, detailed = F)
+M_true$llik_all
+M1$llik_all
+```
+
+### SPDE test
+```{r}
+n.cores = 6
+cl <- snow:::makeCluster(n.cores)
+  clusterExport(cl, "Para_re2all")
+M_true =  evalLogLike_all_parallel2(Y, X,population = population,as.numeric(cluster_true), cl, a0 = 100, b0 = 0.1, detailed = F)
+M1 = evalLogLike_all_parallel2(Y, X,population = population, cl, a0 = 100, b0 = 0.1, detailed = F)
+M_true$llik_all
+M1$llik_all
+```
