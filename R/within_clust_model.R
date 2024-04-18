@@ -95,20 +95,16 @@ prepare_data_each <- function(k, Y, membership, X = NULL, N = NULL) {
 
   # predictors
   if(is.vector(X)) {
-    COV <- rep(X, times = n_k)
+    Xk <- rep(X, times = n_k)
   } else if (is.matrix(X)) {
-    COV <- kronecker(rep(1, nk), X)
+    Xk <- kronecker(rep(1, nk), X)
   } else {
-    COV <- NULL
+    Xk <- NULL
   }
 
-  # list(
-  #   inla_data = data.frame(cbind(Yk = Yk, Nk = Nk, id = 1:(nk*nt), idt = rep(1:nt, nk), ids = rep(1:nk, each = nt))),
-  #   X = COV
-  # )
   list(
     Yk = Yk, Nk = Nk, id = 1:(nk*nt), idt = rep(1:nt, nk), ids = rep(1:nk, each = nt),
-    Xk = COV
+    Xk = Xk
   )
 }
 
