@@ -42,9 +42,9 @@ evalLogLike_each_INLA <- function(k, Y, X, inla.extra, membership, formula, deta
   nt <- dim(Y)[2]
   data_prep <- prepare_data(Y, N, membership, k, nt)
   #
-  if(is.vector(X)){COV = rep(times = data_prep$n_membership, X)}
-  if(is.matrix(X)){COV = do.call(rbind, replicate(data_prep$n_membership, X, simplify = FALSE))}
-  ns = data_prep$n_membership
+  if(is.vector(X)){COV = rep(times = data_prep$n_k, X)}
+  if(is.matrix(X)){COV = do.call(rbind, replicate(data_prep$n_k, X, simplify = FALSE))}
+  ns = data_prep$n_k
   idx = 1:(ns*nt)
   idt = rep(1:nt,ns)
   ids = rep(1:ns, each = nt)
@@ -89,13 +89,33 @@ evalLogLike_each_INLA <- function(k, Y, X, inla.extra, membership, formula, deta
 
 ###############################
 
-##The auxiliary functions for within cluster model using INLA
+## Auxiliary function to create data.frame for cluster `k`
 
-prepare_data <- function(Y, N, membership, k, nt) {
+prepare_data <- function(k, Y, X, N, membership) {
   ind <- which(membership == k)
-  Yk <- matrix(Y[ind,], ncol = nt)
-  n_membership = length(ind)
-  Nk <- matrix(N[ind,], ncol = nt)
-  list(vec_Yk = as.vector(t(Yk)), vec_N = as.vector(t(Nk)), n_membership = n_membership)
+  nk <- length(ind)
+  nt <- nrow(Y)
+
+  # response
+  Yk <- as.vector(Y[,ind])
+
+  # size
+  if (is.vector(N)) {
+    Nk <- rep(N[ind], each = nt)
+  } else if (is.matrix(N)) {
+    Nk <- as.vector(N[,ind])
+  }
+
+  # predictors
+  if(is.vector(X)) {
+    COV <- rep(X, times = n_k)
+  } else if (is.matrix(X)) {
+    COV <- kronecker(rep(1, nk), X)
+  }
+
+  list(
+    inla_data = data.frame(Yk, Nk, id = 1:(nk*nt), idt = rep(1:nt, nk), ids = rep(1:nk, each = nt)),
+    COV = COV
+  )
 }
 
