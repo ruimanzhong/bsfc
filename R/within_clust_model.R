@@ -38,34 +38,27 @@
 #' @export
 evalLogLike_each_INLA <- function(k, Y, X, inla.extra, membership, formula, detailed = FALSE, correction = T) {
   N <- inla.extra$N
+  data_prep <- prepare_data(k, Y, X, N, membership)
+  COV <- data_prep$COV
+  inla_data <- data_prep$inla_data
 
-  nt <- dim(Y)[2]
-  data_prep <- prepare_data(Y, N, membership, k, nt)
-  #
-  if(is.vector(X)){COV = rep(times = data_prep$n_k, X)}
-  if(is.matrix(X)){COV = do.call(rbind, replicate(data_prep$n_k, X, simplify = FALSE))}
-  ns = data_prep$n_k
-  idx = 1:(ns*nt)
-  idt = rep(1:nt,ns)
-  ids = rep(1:ns, each = nt)
-  inla.data <- as.data.frame(cbind(Yk = data_prep$vec_Yk, COV = COV, N = data_prep$vec_N, idx = idx, idt = idt, ids = ids))
   family <- inla.extra$family
   if(family == "poisson"){
-    model <- INLA::inla(formula, family = "poisson", E = inla.data$N,
-                        data = inla.data, control.predictor = list(compute = TRUE),
+    model <- INLA::inla(formula, family = "poisson", E = inla_data$N,
+                        data = inla_data, control.predictor = list(compute = TRUE),
                         control.compute = list(config=TRUE))
   } else if(family == "binomial"){
-    model <- INLA::inla(formula, family = "binomial", Ntrials = inla.data$N,
-                        data = inla.data, control.predictor = list(compute = TRUE),
+    model <- INLA::inla(formula, family = "binomial", Ntrials = inla_data$N,
+                        data = inla_data, control.predictor = list(compute = TRUE),
                         control.compute = list(config=TRUE))
   }else if(family == "nbinomial"){
     model = INLA::inla(formula, family = "binomial",
-                 control.family = list(variant = 1), Ntrials = inla.data$N,
-                 data = inla.data, control.predictor = list(compute = TRUE),
+                 control.family = list(variant = 1), Ntrials = inla_data$N,
+                 data = inla_data, control.predictor = list(compute = TRUE),
                  control.compute = list(config=TRUE))
   }else if(family == "normal" | is.null(family)){
     model = INLA::inla(formula, family = "normal",
-                 data = inla.data, control.predictor = list(compute = TRUE),
+                 data = inla_data, control.predictor = list(compute = TRUE),
                  control.compute = list(config=TRUE))
   }
 
@@ -91,7 +84,7 @@ evalLogLike_each_INLA <- function(k, Y, X, inla.extra, membership, formula, deta
 
 ## Auxiliary function to create data.frame for cluster `k`
 
-prepare_data <- function(k, Y, X, N, membership) {
+prepare_data <- function(k, Y, X, N = NULL, membership) {
   ind <- which(membership == k)
   nk <- length(ind)
   nt <- nrow(Y)
@@ -104,6 +97,8 @@ prepare_data <- function(k, Y, X, N, membership) {
     Nk <- rep(N[ind], each = nt)
   } else if (is.matrix(N)) {
     Nk <- as.vector(N[,ind])
+  } else {
+    Nk <- NULL
   }
 
   # predictors
@@ -114,7 +109,7 @@ prepare_data <- function(k, Y, X, N, membership) {
   }
 
   list(
-    inla_data = data.frame(Yk, Nk, id = 1:(nk*nt), idt = rep(1:nt, nk), ids = rep(1:nk, each = nt)),
+    inla_data = data.frame(cbind(Yk = Yk, Nk = Nk, id = 1:(nk*nt), idt = rep(1:nt, nk), ids = rep(1:nk, each = nt))),
     COV = COV
   )
 }
