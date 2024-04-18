@@ -37,11 +37,9 @@
 #' }
 #' @export
 evalLogMLike_each_INLA <- function(k, Y, membership, X = NULL, N = NULL, family = "normal",
-                                  formula = Yk ~ 1 + COV, correction = FALSE, detailed = FALSE, ...) {
+                                  formula = Yk ~ 1 + Xk, correction = FALSE, detailed = FALSE, ...) {
 
-  data_prep <- prepare_data(k, Y, X, membership, N)
-  COV <- data_prep$COV
-  inla_data <- data_prep$inla_data
+  inla_data <- prepare_data_each(k, Y, membership, X, N)
 
   if(family == "poisson"){
     model <- INLA::inla(formula, family = "poisson", E = inla_data$N,
@@ -78,7 +76,7 @@ evalLogMLike_each_INLA <- function(k, Y, membership, X = NULL, N = NULL, family 
 
 ## Auxiliary function to create data.frame for cluster `k`
 
-prepare_data <- function(k, Y, membership, X = NULL, N = NULL) {
+prepare_data_each <- function(k, Y, membership, X = NULL, N = NULL) {
   ind <- which(membership == k)
   nk <- length(ind)
   nt <- nrow(Y)
@@ -104,9 +102,13 @@ prepare_data <- function(k, Y, membership, X = NULL, N = NULL) {
     COV <- NULL
   }
 
+  # list(
+  #   inla_data = data.frame(cbind(Yk = Yk, Nk = Nk, id = 1:(nk*nt), idt = rep(1:nt, nk), ids = rep(1:nk, each = nt))),
+  #   X = COV
+  # )
   list(
-    inla_data = data.frame(cbind(Yk = Yk, Nk = Nk, id = 1:(nk*nt), idt = rep(1:nt, nk), ids = rep(1:nk, each = nt))),
-    COV = COV
+    Yk = Yk, Nk = Nk, id = 1:(nk*nt), idt = rep(1:nt, nk), ids = rep(1:nk, each = nt),
+    Xk = COV
   )
 }
 
