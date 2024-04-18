@@ -64,7 +64,7 @@ Fun_Wave_Clust <- function(data, formula, inla.extra, graph0, init_val, hyperpar
   p=max(cluster)
   llik_res=lapply(1:p, evalLogLike_each_INLA, Y, X, inla.extra, cluster, formula, detailed = FALSE, correction)
   log_like_vec=unlist(llik_res)
-  llik_all=sum(log_like_vec)
+  log_like=sum(log_like_vec)
 
 
 
@@ -273,7 +273,7 @@ Fun_Wave_Clust <- function(data, formula, inla.extra, graph0, init_val, hyperpar
       p=max(cluster)
       llik_res=lapply(1:p, evalLogLike_each_INLA, Y, X, inla.extra, cluster, formula, detailed = FALSE, correction)
       log_like_vec=unlist(llik_res)
-      llik_all=sum(log_like_vec)
+      log_like=sum(log_like_vec)
     }
 
     ##############################################################################
@@ -302,7 +302,7 @@ Fun_Wave_Clust <- function(data, formula, inla.extra, graph0, init_val, hyperpar
   p=max(cluster)
   llik_res=lapply(1:p, evalLogLike_each_INLA, Y, X, inla.extra, cluster, formula, detailed = FALSE, correction)
   log_like_vec=unlist(llik_res)
-  llik_all=sum(log_like_vec)
+  log_like=sum(log_like_vec)
 
 }
 

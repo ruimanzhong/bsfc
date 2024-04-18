@@ -1,8 +1,8 @@
 ---
-title: "Spatial_functional_clustering_for_Poisson_data"
+title: "Spatial_functional_clustering_for_glm_data"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Spatial_functional_clustering_for_Poisson_data}
+  %\VignetteIndexEntry{Spatial_functional_clustering_for_Poisson_glm_data}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -38,7 +38,7 @@ path_proj <- '~/Documents/project3'
 path_data <- file.path(path_proj, "data")
 path_raw <- file.path(path_data, "raw")
 path_sim <- file.path(path_data, "simulated")
-path_res <- file.path(path_proj, "data", "result",".RData")
+path_res <- file.path(path_proj, "data", "result","normal.RData")
 path_im <- file.path(path_data,  "image")
 ```
 
@@ -47,10 +47,10 @@ path_im <- file.path(path_data,  "image")
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 ##Load data
-data = readRDS(file.path(path_sim, 'sim-poi-5c.rds'))
+data = readRDS(file.path(path_sim, 'spatial-data-glm.rds'))
 map <-  readRDS(file.path(path_raw, "spatial-domain-clusters.rds"))
 cluster_true = data$cluster
-Y = t(data$Y)
+Y = t(data$eta)
 ##ns: number of locations, nt: number of time points
 ns=dim(Y)[1]; nt=dim(Y)[2]  
 ## build design matrix
@@ -82,7 +82,7 @@ for(i in 1:ns){ratio[i,] = as.matrix(Y[i,]/population[i])}
 beta.ini=t(t(X)%*%t(log(Y+1))) 
 
 ######  Construct an initial MST
-beta.ini= ginv(t(X) %*% X) %*% t(X) %*% t(log(ratio)) # p * s
+beta.ini= ginv(t(X) %*% X) %*% t(X) %*% t(Y) # p * s
 beta.ini = t(beta.ini) 
 
 inc.mat=get.edgelist(graph0, names = F)
@@ -91,38 +91,45 @@ E(graph0)$weights=weights
 mstgraph.ini=mst(graph0)
 
 V(mstgraph.ini)$vid=1:ns
-rmid=order(E(mstgraph.ini)$weights, decreasing = TRUE)[1:6]
+rmid=order(E(mstgraph.ini)$weights, decreasing = TRUE)[1:15]
 
 graph_comp=components(delete.edges(mstgraph.ini, rmid))
 membership.ini=graph_comp$membership
 
 membership=membership.ini ##cluster membership
 mstgraph=mstgraph.ini     ## initial MST
-
+cluster_true 
 ```
-We could compare the true cluster label with the initial label
-- Obtain the estimates for within-cluster parameters:
+- Initialize model parameters:
+ target is list containging response Y and covariate X
+ hyperpar is a parameter contains the penalty of the number of clusters
+ init_val includes parameters of initial beta, cluster memebership and spanning tree.
+ inla.extra and formula are components of INLA function. inla.extra descrbes the model type (family, normal, poisson, binomial), and potential parameters; 
+ formula is for fitting within-cluster model, thus, the response name should be 'Yk'
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 clust_uniq=sort(unique(membership.ini)); k=length(clust_uniq)
-target <- list(Y = Y, X = time)
+target <- list(Y = Y, X = X)
 hyperpar<-list("c"= 0.5)
 ###List of initial values
 init_val<-list("beta"=beta.ini, 
-               "cluster"=membership.ini, 
+               "cluster"= membership.ini, 
                "trees"=mstgraph.ini)
-inla.extra <- list(family = "poisson",N = population, correction = T)
-formula <- Yk~ 1  +f(COV, model = "rw1", scale.model = TRUE,hyper = list(theta = list(prior="pc.prec", param=c(1,0.01))))+ f(idx, model = 'iid',hyper = list(prec = list(prior = "loggamma", param = c(0.01, 0.01))))
-MCMC= 1000; BURNIN=100; THIN=1
+inla.extra <- list(family = "normal",N = population, correction = F)
+formula <- Yk~ 1  + X1 + X2
+MCMC= 10000; BURNIN=5000; THIN=1
 ```
-- Run the Fclust-RST method:
+- Run the Fclust-RST method on normal response data:
 ```{r message=TRUE, warning=FALSE, include=FALSE}
 # library(RhpcBLASctl)
-# 
 # blas_get_num_procs()
 # blas_set_num_threads(6)
 system.time({
      Fun_Wave_Clust(target,formula, inla.extra, graph0, init_val, hyperpar, MCMC, BURNIN, THIN, path_res, seed = 1234)
  })
+
+# normal case , MCMC = 10000, THIN = 1:
+# user   system  elapsed 
+# 35545.59 23587.49 44591.56 
 ```
 
 - Plot the clustering results:
@@ -188,13 +195,13 @@ M_true$llik_all
 M1$llik_all
 ```
 
-### SPDE test
+### test
+beta = cbind(
+    c(1, 0), c(-1, 0), c(0, 0), c(-3, 3), c(3, -3),
+    c(1, 0), c(-1, 0), c(0, 0), c(-3, 3), c(3, -3)
+)
+
 ```{r}
-n.cores = 6
-cl <- snow:::makeCluster(n.cores)
-  clusterExport(cl, "Para_re2all")
-M_true =  evalLogLike_all_parallel2(Y, X,population = population,as.numeric(cluster_true), cl, a0 = 100, b0 = 0.1, detailed = F)
-M1 = evalLogLike_all_parallel2(Y, X,population = population, cl, a0 = 100, b0 = 0.1, detailed = F)
-M_true$llik_all
-M1$llik_all
+matplot(t(Y[which(as.numeric(cluster_true) == 1),]))
+
 ```
