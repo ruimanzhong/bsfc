@@ -1,4 +1,4 @@
-#' Evaluate Log-Likelihood for Each Group in INLA
+#' Evaluate Log-Marginal-Likelihood for Each Group in INLA
 #'
 #' This function computes the log-likelihood for each group based on the membership
 #' indicator using the Integrated Nested Laplace Approximation (INLA) approach.
@@ -36,46 +36,40 @@
 #' result <- evalLogLike_each_INLA(1, Y, X, inla.extra, membership, custom_formula, TRUE)
 #' }
 #' @export
-evalLogLike_each_INLA <- function(k, Y, X, inla.extra, membership, formula, detailed = FALSE, correction = T) {
-  N <- inla.extra$N
-  data_prep <- prepare_data(k, Y, X, N, membership)
+evalLogMLike_each_INLA <- function(k, Y, membership, X = NULL, N = NULL, family = "normal",
+                                  formula = Yk ~ 1 + COV, correction = FALSE, detailed = FALSE, ...) {
+
+  data_prep <- prepare_data(k, Y, X, membership, N)
   COV <- data_prep$COV
   inla_data <- data_prep$inla_data
 
-  family <- inla.extra$family
   if(family == "poisson"){
     model <- INLA::inla(formula, family = "poisson", E = inla_data$N,
                         data = inla_data, control.predictor = list(compute = TRUE),
-                        control.compute = list(config=TRUE))
-  } else if(family == "binomial"){
+                        control.compute = list(config=TRUE), ...)
+  } else if (family == "binomial"){
     model <- INLA::inla(formula, family = "binomial", Ntrials = inla_data$N,
                         data = inla_data, control.predictor = list(compute = TRUE),
-                        control.compute = list(config=TRUE))
-  }else if(family == "nbinomial"){
-    model = INLA::inla(formula, family = "binomial",
+                        control.compute = list(config=TRUE), ...)
+  } else if (family == "nbinomial"){
+    model <- INLA::inla(formula, family = "binomial",
                  control.family = list(variant = 1), Ntrials = inla_data$N,
                  data = inla_data, control.predictor = list(compute = TRUE),
-                 control.compute = list(config=TRUE))
-  }else if(family == "normal" | is.null(family)){
-    model = INLA::inla(formula, family = "normal",
+                 control.compute = list(config=TRUE), ...)
+  } else if (family == "normal" | is.null(family)){
+    model <- INLA::inla(formula, family = "normal",
                  data = inla_data, control.predictor = list(compute = TRUE),
-                 control.compute = list(config=TRUE))
+                 control.compute = list(config=TRUE), ...)
   }
 
-
   if (detailed) {
-    return(model)
+    model
   } else {
     if (correction) {
-      # correction = T
-      theta <- exp(as.numeric(model[["misc"]][["configs"]][["config"]][[1]][["theta"]][[1]]))
-      Q <- model[["misc"]][["configs"]][["config"]][[1]][["Qprior"]]
-      dim <- dim(Q)[1] - 1
-      det <- sum(diag(as.matrix(SparseM::chol(Q[1:dim,1:dim])))^2)
-      mlik <- as.numeric(model[["mlik"]][[1]]) + log(det/theta^dim) * 0.5
-      return(mlik)
+      mlik_corrected(model)
     } else {
-      return(model[["mlik"]][[1]])}
+      model[["mlik"]][[1]]
+    }
   }
 }
 
@@ -84,7 +78,7 @@ evalLogLike_each_INLA <- function(k, Y, X, inla.extra, membership, formula, deta
 
 ## Auxiliary function to create data.frame for cluster `k`
 
-prepare_data <- function(k, Y, X, N = NULL, membership) {
+prepare_data <- function(k, Y, membership, X = NULL, N = NULL) {
   ind <- which(membership == k)
   nk <- length(ind)
   nt <- nrow(Y)
@@ -106,11 +100,23 @@ prepare_data <- function(k, Y, X, N = NULL, membership) {
     COV <- rep(X, times = n_k)
   } else if (is.matrix(X)) {
     COV <- kronecker(rep(1, nk), X)
+  } else {
+    COV <- NULL
   }
 
   list(
     inla_data = data.frame(cbind(Yk = Yk, Nk = Nk, id = 1:(nk*nt), idt = rep(1:nt, nk), ids = rep(1:nk, each = nt))),
     COV = COV
   )
+}
+
+## Auxiliary function to correct the marginal likelihood of INLA model
+
+mlik_corrected <- function(inla_model) {
+  theta <- exp(as.numeric(inla_model[["misc"]][["configs"]][["config"]][[1]][["theta"]][[1]]))
+  Q <- inla_model[["misc"]][["configs"]][["config"]][[1]][["Qprior"]]
+  dim <- dim(Q)[1] - 1
+  det <- sum(diag(as.matrix(SparseM::chol(Q[1:dim,1:dim])))^2)
+  as.numeric(inla_model[["mlik"]][[1]]) + log(det/theta^dim) * 0.5
 }
 
