@@ -1,21 +1,22 @@
-#' Evaluate Log-Marginal-Likelihood for Each Group in INLA
+#' Evaluate Log Marginal Likelihood for Each Cluster Using INLA
 #'
-#' This function computes the log-likelihood for each group based on the membership
-#' indicator using the Integrated Nested Laplace Approximation (INLA) approach.
-#' It allows flexible definition of the model formula and can be customized
-#' to include detailed output or just the marginal likelihood.
+#' This function computes the log marginal likelihood for a specific cluster `k` within a dataset. It supports multiple family distributions and allows for the inclusion of exposure or trial sizes if applicable. The function is flexible, accepting custom formulas and additional arguments for the INLA model fitting.
 #'
-#' @param k integer, specifying the group index to compute.
-#' @param Y A ns by nt numeric matrix, containing the response matrix.
-#' @param X A numeric matrix, the inverse discrete wavelet transform matrix used in the model.
-#' @param inla.extra A list of within cluster model, the model type, and related parameters
-#' @param membership integer vector, indicating the membership of each observation in `Y`.
-#' @param formula an object of class \code{\link[stats]{formula}}, defining the model to be fit.
-#' @param detailed logical, indicating whether to return a detailed output including
-#'        full INLA object (`TRUE`) or just the computed marginal likelihood (`FALSE`).
-#' @param correction logical, if a correction should be applied when computing marginal loglikelihood, for more details, please see inla.doc("rw1")
-#' @return If `detailed` is TRUE, returns the full INLA object; otherwise, returns
-#'         a numeric value of the marginal likelihood.
+#' @param k Integer, the cluster index for which to compute the log marginal likelihood.
+#' @param Y Numeric vector or matrix, representing the response variable(s) in the model.
+#' @param membership Integer vector, indicating the cluster membership of each observation.
+#' @param X Numeric matrix or NULL, optional covariates for the model; defaults to NULL if not provided.
+#' @param N Numeric vector or NULL, representing the number of trials or exposures for each observation (necessary for binomial and Poisson models); defaults to NULL.
+#' @param family Character string specifying the family of the model, with support for "normal", "poisson", "binomial", and "nbinomial" (negative binomial variant 1); defaults to "normal".
+#' @param formula Object of class \code{\link[stats]{formula}}, specifying the model to be fitted; defaults to `Yk ~ 1 + Xk`.
+#' @param correction Logical, indicating whether a correction should be applied to the computed log marginal likelihood; defaults to FALSE.
+#' @param detailed Logical, specifying whether to return the full model object or just the log marginal likelihood; defaults to FALSE.
+#' @param ... Additional arguments passed to the INLA function.
+#'
+#' @return Depending on the `detailed` parameter:
+#'   - If `detailed` is TRUE, returns the full `INLA` model object.
+#'   - If `detailed` is FALSE, returns the log marginal likelihood (corrected if `correction` is TRUE).
+#'
 #' @examples
 #' \dontrun{# Define data matrices and parameters
 #' Y <- matrix(rpois(100, lambda = 10), ncol=10)
@@ -26,23 +27,22 @@
 #' a0 <- 0.1; b0 <- 0.1
 #'
 #' # Define a formula, the name of the iid random effec should be idx
-#' formula <- Yk ~ 1 + COV + f(idx, model = 'iid',
+#' formula <- Yk ~ 1 + Xk + f(idx, model = 'iid',
 #'                  hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
-#' formula <- Yk ~ 1 + COV + f(idx, model = 'iid',hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
-#' formula= Yk~ 1  +f(COV, model = "rw1", scale.model = TRUE,hyper = list(theta = list(prior="pc.prec", param=c(1,0.01))))+
+#' formula <- Yk ~ 1 + Xk + f(idx, model = 'iid',hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
+#' formula= Yk~ 1  +f(Xk, model = "rw1", scale.model = TRUE,hyper = list(theta = list(prior="pc.prec", param=c(1,0.01))))+
 #' f(idx, model = 'iid',hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
-#' formula= Yk~ 1  + f(ids,model="iid",group=idt, control.group=list(model="ar1"),hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
+#' formula= Yk ~ 1  + f(ids,model="iid",group=idt, control.group=list(model="ar1"),hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
 #' # Call the function
 #' result <- evalLogLike_each_INLA(1, Y, X, inla.extra, membership, custom_formula, TRUE)
 #' }
 #' @export
 evalLogMLike_each_INLA <- function(k, Y, membership, X = NULL, N = NULL, family = "normal",
                                   formula = Yk ~ 1 + Xk, correction = FALSE, detailed = FALSE, ...) {
-
   inla_data <- prepare_data_each(k, Y, membership, X, N)
-
+  Nk = inla_data[['Nk']]
   if(family == "poisson"){
-    model <- INLA::inla(formula, family = "poisson", E = inla_data$N,
+    model <- INLA::inla(formula, family = "poisson", E = Nk,
                         data = inla_data, control.predictor = list(compute = TRUE),
                         control.compute = list(config=TRUE), ...)
   } else if (family == "binomial"){

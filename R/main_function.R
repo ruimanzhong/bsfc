@@ -5,12 +5,10 @@
 #' It handles various types of moves including birth, death, change, and hyperparameter updates
 #' to explore the space of possible cluster configurations.
 #'
-#' @param data A list containing the matrices 'Y' and 'X', where 'Y' is the matrix of observations
-#'        and 'X' is the matrix of covariates or design matrix.
-#' @param formula An object of class \code{\link[stats]{formula}} specifying the model used in INLA.
-#' @param inla.extra Additional parameters or data needed for running the INLA model.
+#' @param data A list containing data matrices 'Y' and 'X', and 'N' for the number of trials or cases.
+#' @param formula A formula object representing the model to be fitted.
 #' @param graph0 Initial spanning tree used for the Bayesian model.
-#' @param init_val List of initial values for the parameters 'trees', 'beta', and 'cluster'.
+#' @param init_val List of initial values for parameters 'trees', 'beta', and 'cluster'.
 #' @param hyperpar List containing hyperparameters used in the model.
 #' @param MCMC Integer, number of MCMC iterations to perform.
 #' @param BURNIN Integer, number of burn-in iterations to discard.
@@ -18,8 +16,7 @@
 #' @param path_save Character, the path where results should be saved.
 #' @param seed Integer, seed value for random number generation, defaults to 1234.
 #'
-#' @return The function saves the MCMC outputs directly to the path specified by 'path_save'.
-#'         It returns an invisible NULL explicitly, as the main results are saved on disk.
+#' @return NULL The function primarily outputs results to a specified path and does not return anything.
 #'
 #' @examples
 #' # Example setup (note: actual data and parameters need to be defined)
@@ -32,12 +29,12 @@
 #' hyperpar <- list(c = 0.5)
 #' path_save <- "path/to/save/results/"
 #'
-#' Fun_Wave_Clust(data, formula, inla.extra, graph0, init_val, hyperpar, MCMC = 10000, BURNIN = 5000, THIN = 10, path_save)
+#' BayesClust(data,family, formula, graph0, init_val, hyperpar, MCMC, BURNIN, THIN, path_save, seed = 1234)
 #'}
 #' @export
-Fun_Wave_Clust <- function(data, formula, inla.extra, graph0, init_val, hyperpar, MCMC, BURNIN, THIN, path_save, seed = 1234) {
-
+BayesClust <- function(data, formula = Yk ~ 1 + Xk, family = "normal", graph0, init_val, hyperpar, correction = F, detailed = F, MCMC, BURNIN, THIN, path_save, seed = 1234, ...) {
   set.seed(seed)
+
 
   # initial values
 
@@ -47,7 +44,7 @@ Fun_Wave_Clust <- function(data, formula, inla.extra, graph0, init_val, hyperpar
   k = max(cluster) # number of clusters
   Y = data$Y
   X = data$X
-  correction = inla.extra$correction
+  N = data$N
   #For recording the acceptance ratio
   hyper_cnt = 0; birth_cnt=0; death_cnt=0; change_cnt=0;
   nt = ncol(Y); ns = nrow(Y);
@@ -57,14 +54,13 @@ Fun_Wave_Clust <- function(data, formula, inla.extra, graph0, init_val, hyperpar
   rhy = 0.05
   c = hyperpar$c
 
-  hyper = list(c)
 
 
   ### initialize log likelihood vector
-  p=max(cluster)
-  llik_res=lapply(1:p, evalLogLike_each_INLA, Y, X, inla.extra, cluster, formula, detailed = FALSE, correction)
-  log_like_vec=unlist(llik_res)
-  log_like=sum(log_like_vec)
+  p = max(cluster)
+  llik_res = lapply(1:p, evalLogMLike_each_INLA, Y, cluster, X, N, family, formula, correction, FALSE)
+  log_like_vec = unlist(llik_res)
+  log_like = sum(log_like_vec)
 
 
 
@@ -111,7 +107,7 @@ Fun_Wave_Clust <- function(data, formula, inla.extra, graph0, init_val, hyperpar
       log_A = log(1-c)
       ## calculate loglikelihood ratio by only comparing local likelihood of the two clusters that changed.
 
-      log_L_new=evalLogLike.ratio('split',log_like_vec, split_res, Y, X, inla.extra, membership_new, formula, detailed = F, correction)
+      log_L_new=evalLogLike.ratio('split',log_like_vec, split_res, Y, membership_new, X, N, family, formula, correction, detailed = F, ...)
       log_L=log_L_new$ratio
 
       #acceptance probability
@@ -163,7 +159,7 @@ Fun_Wave_Clust <- function(data, formula, inla.extra, graph0, init_val, hyperpar
 
       # compute log-likelihood ratio
 
-      log_L_new=evalLogLike.ratio('merge',log_like_vec, merge_res, Y, X, inla.extra, membership_new, formula, detailed = F, correction)
+      log_L_new=evalLogLike.ratio('merge',log_like_vec, merge_res, Y, membership_new, X, N, family, formula, correction, detailed = F, ...)
       log_L=log_L_new$ratio
 
 
@@ -210,7 +206,7 @@ Fun_Wave_Clust <- function(data, formula, inla.extra, graph0, init_val, hyperpar
 
       k = k-1
 
-      log_L_new_merge=evalLogLike.ratio('merge',log_like_vec, merge_res, Y,X,inla.extra, membership_new, formula, detailed = F, correction)
+      log_L_new_merge=evalLogLike.ratio('merge',log_like_vec, merge_res, Y, membership_new, X, N, family, formula, correction, detailed = F, ...)
 
       # then perform birth move
       split_res = splitCluster(mstgraph, k, merge_res$cluster);
@@ -270,10 +266,10 @@ Fun_Wave_Clust <- function(data, formula, inla.extra, graph0, init_val, hyperpar
       #######################################################################################
 
       ##Update log-likelihood value
-      p=max(cluster)
-      llik_res=lapply(1:p, evalLogLike_each_INLA, Y, X, inla.extra, cluster, formula, detailed = FALSE, correction)
-      log_like_vec=unlist(llik_res)
-      log_like=sum(log_like_vec)
+      p = max(cluster)
+      llik_res = lapply(1:p, evalLogMLike_each_INLA, Y, cluster, X, N, family, formula, correction, FALSE)
+      log_like_vec = unlist(llik_res)
+      log_like = sum(log_like_vec)
     }
 
     ##############################################################################

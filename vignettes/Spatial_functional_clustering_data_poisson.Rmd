@@ -50,16 +50,14 @@ path_im <- file.path(path_data,  "image")
 data = readRDS(file.path(path_sim, 'spatial-data-glm.rds'))
 map <-  readRDS(file.path(path_raw, "spatial-domain-clusters.rds"))
 cluster_true = data$cluster
-Y = t(data$eta)
-##ns: number of locations, nt: number of time points
-ns=dim(Y)[1]; nt=dim(Y)[2]  
+eta = data$eta
+Y = data$Y
+nt=dim(Y)[1]; ns=dim(Y)[2]  
 ## build design matrix
 time = seq(0, 1, length.out = nt)
 # compute fixed effects
 X = poly(time, 2, raw = TRUE, simple = TRUE)
-colnames(X) <- c('X1', 'X2')
-population <- matrix(map$population, nrow = ns, ncol = nt, byrow = FALSE)
-# vec_Y = as.integer(as.vector(t(Y)))
+population <- matrix(map$population, nrow = nt, ncol = ns, byrow = T)
 ```
 
 - Obtain initial estimates for the between-cluster parameters. 
@@ -108,14 +106,13 @@ cluster_true
  formula is for fitting within-cluster model, thus, the response name should be 'Yk'
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 clust_uniq=sort(unique(membership.ini)); k=length(clust_uniq)
-target <- list(Y = Y, X = X)
+target <- list(Y = eta, X = X)
 hyperpar<-list("c"= 0.5)
 ###List of initial values
 init_val<-list("beta"=beta.ini, 
                "cluster"= membership.ini, 
                "trees"=mstgraph.ini)
-inla.extra <- list(family = "normal",N = population, correction = F)
-formula <- Yk~ 1  + X1 + X2
+formula <- Yk~ 1  + Xk
 MCMC= 10000; BURNIN=5000; THIN=1
 ```
 - Run the Fclust-RST method on normal response data:
@@ -155,11 +152,6 @@ dev.off()
 - Plot the estimated curve (in red) versus the observed ones (in grey) for each cluster:
 
 ```{r echo=TRUE, message=FALSE}
-n.cores = 6
-cl <- snow:::makeCluster(n.cores)
-  clusterExport(cl, "Para_re2all")
-result=parLapply(cl, 1:p,evalLogLike_each_INLA, Y, X, population, as.numeric(clust_res), a0 = 0.1, b0 = 0.1, order = NULL, detailed = T
-)
 p = max(clust_res)
 col_n=gray.colors(80, alpha=0.5)
 
@@ -179,22 +171,6 @@ lines(time, colMeans(m), col="red")
 dev.off()
 ```
 
-```{r}
-nt = 100
-X = seq(0, 1, length.out = 100)
-
-```
-
-```{r}
-n.cores = 6
-cl <- snow:::makeCluster(n.cores)
-  clusterExport(cl, "Para_re2all")
-M_true =  evalLogLike_all_parallel2(Y, X,population = population,as.numeric(cluster_true), cl, a0 = 0.1, b0 = 0.1, order = 2, detailed = F)
-M1 = evalLogLike_all_parallel2(Y, X,population = population,1:27, cl, a0 = 0.1, b0 = 0.1, order = 2, detailed = F)
-M_true$llik_all
-M1$llik_all
-```
-
 ### test
 beta = cbind(
     c(1, 0), c(-1, 0), c(0, 0), c(-3, 3), c(3, -3),
@@ -202,6 +178,35 @@ beta = cbind(
 )
 
 ```{r}
-matplot(t(Y[which(as.numeric(cluster_true) == 1),]))
+source('~/Documents/spfc/R/within_clust_model.R')
+data = readRDS(file.path(path_sim, 'spatial-data-glm.rds'))
+map <-  readRDS(file.path(path_raw, "spatial-domain-clusters.rds"))
+cluster_true = as.numeric(data$cluster)
+Y = data$Y
+nt=dim(Y)[1]; ns=dim(Y)[2]  
+## build design matrix
+time = seq(0, 1, length.out = nt)
+# compute fixed effects
+X = poly(time, 2, raw = TRUE, simple = TRUE)
+population <- matrix(map$population, nrow = nt, ncol = ns, byrow = T)
+# matplot(Y)
+formula = Yk ~ 1 + Xk + f(id, model = 'iid',hyper = list(prec = list(prior = "loggamma", param = c(0.1, 0.1))))
 
+p = max(cluster_true)
+evalLogMLike_each_INLA(2, Y, cluster_true, X = X, N = population, family = "poisson",formula, correction = FALSE, detailed = F)
+result_t=lapply( 1:p, FUN = evalLogMLike_each_INLA, Y, cluster_true, X, population, family = "poisson",formula, correction = FALSE, detailed = F)
+  log_like_vec_t=unlist(result_t)
+  log_like_t=sum(log_like_vec_t)
+```
+
+```{r}
+path_res <- file.path(path_proj, "data", "result",".RData")
+load(file.path(path_res))
+clust_res = cluster_out[nrow(cluster_out),]
+p = max(clust_res)
+result=lapply( 1:p, FUN = evalLogMLike_each_INLA, Y, clust_res, X, population, family = "poisson",formula, correction = FALSE, detailed = F)
+  log_like_vec=unlist(result)
+  log_like=sum(log_like_vec)
+  log_like_t
+  log_like
 ```
