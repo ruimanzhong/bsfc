@@ -25,7 +25,7 @@ evalLogMLike.ratio <- function(move, log_like_vec, control.move, Y, membership, 
 
   # update local likelihoods for split move
   if(move == 'split'){
-    log_like_vec_new <- log_like_vec;
+    log_like_vec_new <- log_like_vec
     M1 <- evalLogMLike_each(control.move$clust_old, Y, membership, X, N, family, formula, correction, detailed, ...)
     M2 <- evalLogMLike_each(control.move$k, Y, membership, X, N, family, formula, correction, detailed, ...)
     log_like_vec_new[control.move$clust_old] <- M1
