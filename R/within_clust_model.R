@@ -37,25 +37,24 @@
 #' result <- evalLogLike_each_INLA(1, Y, X, inla.extra, membership, custom_formula, TRUE)
 #' }
 #' @export
-evalLogMLike_each_INLA <- function(k, Y, membership, X = NULL, N = NULL, family = "normal",
+evalLogMLike_each <- function(k, Y, membership, X = NULL, N = NULL, family = "normal",
                                   formula = Yk ~ 1 + Xk, correction = FALSE, detailed = FALSE, ...) {
   inla_data <- prepare_data_each(k, Y, membership, X, N)
-  Nk = inla_data[['Nk']]
   if(family == "poisson"){
-    model <- INLA::inla(formula, family = "poisson", E = Nk,
+    model <- INLA::inla(formula, family, E = inla_data$Nk,
                         data = inla_data, control.predictor = list(compute = TRUE),
                         control.compute = list(config=TRUE), ...)
   } else if (family == "binomial"){
-    model <- INLA::inla(formula, family = "binomial", Ntrials = inla_data$N,
+    model <- INLA::inla(formula, family, Ntrials = inla_data$Nk,
                         data = inla_data, control.predictor = list(compute = TRUE),
                         control.compute = list(config=TRUE), ...)
   } else if (family == "nbinomial"){
-    model <- INLA::inla(formula, family = "binomial",
-                 control.family = list(variant = 1), Ntrials = inla_data$N,
+    model <- INLA::inla(formula, family,
+                 control.family = list(variant = 1), Ntrials = inla_data$Nk,
                  data = inla_data, control.predictor = list(compute = TRUE),
                  control.compute = list(config=TRUE), ...)
   } else if (family == "normal" | is.null(family)){
-    model <- INLA::inla(formula, family = "normal",
+    model <- INLA::inla(formula, family,
                  data = inla_data, control.predictor = list(compute = TRUE),
                  control.compute = list(config=TRUE), ...)
   }
