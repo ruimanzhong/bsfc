@@ -41,16 +41,16 @@ evalLogMLike_each <- function(k, Y, membership, X = NULL, N = NULL, family = "no
                                   formula = Yk ~ 1 + Xk, correction = FALSE, detailed = FALSE, ...) {
   inla_data <- prepare_data_each(k, Y, membership, X, N)
   if(family == "poisson"){
-    model <- INLA::inla(formula, family, E = inla_data$Nk,
+    model <- INLA::inla(formula, family, E = Nk,
                         data = inla_data, control.predictor = list(compute = TRUE),
                         control.compute = list(config=TRUE), ...)
   } else if (family == "binomial"){
-    model <- INLA::inla(formula, family, Ntrials = inla_data$Nk,
+    model <- INLA::inla(formula, family, Ntrials = Nk,
                         data = inla_data, control.predictor = list(compute = TRUE),
                         control.compute = list(config=TRUE), ...)
   } else if (family == "nbinomial"){
     model <- INLA::inla(formula, family,
-                 control.family = list(variant = 1), Ntrials = inla_data$Nk,
+                 control.family = list(variant = 1), Ntrials = Nk,
                  data = inla_data, control.predictor = list(compute = TRUE),
                  control.compute = list(config=TRUE), ...)
   } else if (family == "normal" | is.null(family)){
