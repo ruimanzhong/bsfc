@@ -36,7 +36,7 @@
 #' result <- evalLogLike_each_INLA(1, Y, X, inla.extra, membership, custom_formula, TRUE)
 #' }
 #' @export
-evalLogMLike_each_INLA <- function(k, Y, membership, X = NULL, N = NULL, family = "normal",
+evalLogMLike_each <- function(k, Y, membership, X = NULL, N = NULL, family = "normal",
                                   formula = Yk ~ 1 + Xk, correction = FALSE, detailed = FALSE, ...) {
 
   inla_data <- prepare_data_each(k, Y, membership, X, N)
