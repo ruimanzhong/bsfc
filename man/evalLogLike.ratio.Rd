@@ -2,19 +2,21 @@
 % Please edit documentation in R/evalLog.ratio.R
 \name{evalLogLike.ratio}
 \alias{evalLogLike.ratio}
-\title{Compute Likelihood Ratio for a Proposed Move}
+\title{Evaluate Log-Likelihood Ratio for a Proposed Move}
 \usage{
 evalLogLike.ratio(
   move,
   log_like_vec,
   control.move,
   Y,
-  X,
-  inla.extra,
   membership,
+  X,
+  N,
+  family,
   formula,
-  detailed,
-  correction
+  correction,
+  detailed = F,
+  ...
 )
 }
 \arguments{
@@ -27,27 +29,27 @@ such as \code{clust_old}, \code{k}, \code{cluster_newid}, and \code{cluster_rm}.
 
 \item{Y}{Numeric matrix of data observations.}
 
+\item{membership}{Integer vector indicating the cluster membership of each observation.}
+
 \item{X}{Numeric matrix representing the model's design matrix or covariates.}
 
-\item{inla.extra}{Additional parameters or data needed for running the INLA model.}
+\item{N}{The number of trials or cases, applicable in certain statistical families like binomial.}
 
-\item{membership}{Integer vector indicating the cluster membership of each observation.}
+\item{family}{The family of distributions to use, e.g., "normal", "poisson", etc.}
 
 \item{formula}{An object of class \code{\link[stats]{formula}} specifying the model to be used in INLA.}
 
-\item{detailed}{Logical, indicating whether detailed output from INLA is required.}
-
 \item{correction}{Logical, specifying whether correction calculations should be executed.}
+
+\item{detailed}{Logical, indicating whether detailed output from INLA is required.}
 }
 \value{
-A list containing updated log likelihood vector and the log likelihood ratio (\code{llratio}).
+A list containing the updated log likelihood vector and the log likelihood ratio (\code{llratio}).
 }
 \description{
-This function calculates the likelihood ratio for a proposed "split" or "merge" move
-within a clustering or partitioning algorithm, using the Integrated Nested Laplace
-Approximation (INLA). It is designed to work with spatial or model-based clustering
-where likelihood needs to be recomputed for different configurations.
-}
-\examples{
-# Assuming appropriate data and control setup
+This function calculates the log-likelihood ratio for a proposed "split" or "merge"
+move within a clustering or partitioning algorithm using the Integrated Nested
+Laplace Approximation (INLA) approach. It updates local likelihoods based on
+whether a split or merge operation has been proposed and supports multiple family
+distributions.
 }

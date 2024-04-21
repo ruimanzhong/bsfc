@@ -75,12 +75,11 @@ adjacency_matrix <- sf::st_touches(map) %>% as("matrix")
 graph0 <- graph.adjacency(adjacency_matrix, mode = "undirected", diag = FALSE)
 
 ##Initial beta estimates
-ratio = matrix(0,nrow = ns, ncol = nt)
-for(i in 1:ns){ratio[i,] = as.matrix(Y[i,]/population[i])}
-beta.ini=t(t(X)%*%t(log(Y+1))) 
+ratio = matrix(0,nrow = nt, ncol = ns)
+for(i in 1:ns){ratio[,i] = as.matrix(Y[,i]/population[,i])}
 
 ######  Construct an initial MST
-beta.ini= ginv(t(X) %*% X) %*% t(X) %*% t(Y) # p * s
+beta.ini= ginv(t(X) %*% X) %*% t(X) %*% eta # p * s
 beta.ini = t(beta.ini) 
 
 inc.mat=get.edgelist(graph0, names = F)
@@ -177,8 +176,9 @@ beta = cbind(
     c(1, 0), c(-1, 0), c(0, 0), c(-3, 3), c(3, -3)
 )
 
+- Run Model on Poisson data
+
 ```{r}
-source('~/Documents/spfc/R/within_clust_model.R')
 data = readRDS(file.path(path_sim, 'spatial-data-glm.rds'))
 map <-  readRDS(file.path(path_raw, "spatial-domain-clusters.rds"))
 cluster_true = as.numeric(data$cluster)
@@ -189,14 +189,22 @@ time = seq(0, 1, length.out = nt)
 # compute fixed effects
 X = poly(time, 2, raw = TRUE, simple = TRUE)
 population <- matrix(map$population, nrow = nt, ncol = ns, byrow = T)
-# matplot(Y)
+```
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+clust_uniq=sort(unique(membership.ini)); k=length(clust_uniq)
+target <- list(Y = data$Y, X = X, N = population)
+hyperpar<-list("c"= 0.5)
+###List of initial values
+init_val<-list("beta"=beta.ini, 
+               "cluster"= membership.ini, 
+               "trees"=mstgraph.ini)
 formula = Yk ~ 1 + Xk + f(id, model = 'iid',hyper = list(prec = list(prior = "loggamma", param = c(0.1, 0.1))))
-
-p = max(cluster_true)
-evalLogMLike_each_INLA(2, Y, cluster_true, X = X, N = population, family = "poisson",formula, correction = FALSE, detailed = F)
-result_t=lapply( 1:p, FUN = evalLogMLike_each_INLA, Y, cluster_true, X, population, family = "poisson",formula, correction = FALSE, detailed = F)
-  log_like_vec_t=unlist(result_t)
-  log_like_t=sum(log_like_vec_t)
+MCMC= 1000; BURNIN=100; THIN=1
+```
+```{r message=TRUE, warning=FALSE, include=FALSE}
+system.time({
+     Fun_Wave_Clust(target,formula, inla.extra, graph0, init_val, hyperpar, MCMC, BURNIN, THIN, path_res, seed = 1234)
+ })
 ```
 
 ```{r}
