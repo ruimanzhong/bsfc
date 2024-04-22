@@ -160,11 +160,11 @@ par(mfrow = c(1,4))
 time = seq(0,1, length.out = nt)
 for(k in 1:p){
 IND=which(clust_res==k)
-plot(time, ratio[IND[1],], "l", col=col_n[40], xlab="t", ylab="f(t)",
+plot(time, eta[,IND[1]], "l", col=col_n[40], xlab="t", ylab="f(t)",
 main=sprintf("Cluster %d", k), ylim=c(ymin, ymax))
 m <- t(matrix(result[[k]]$summary.fitted.values$mean, nrow = nt))
 for(i in 2:length(IND))
-lines(time, ratio[IND[i],], col=col_n[40])
+lines(time, eta[,IND[i]], col=col_n[40])
 lines(time, colMeans(m), col="red")
 }
 dev.off()
@@ -226,12 +226,35 @@ MCMC= 2000; BURNIN=500; THIN=1
 ```
 ```{r}
 load(file.path(path_res))
-clust_res = cluster_out[nrow(cluster_out),]
+clust_res = cluster_out[length(MST_out),]
 p = max(clust_res)
-result=lapply( 1:p, FUN = evalLogMLike_each_INLA, Y, clust_res, X, population, family = "poisson",formula, correction = FALSE, detailed = F)
-result_t=lapply( 1:p, FUN = evalLogMLike_each_INLA, Y, cluster_true, X, population, family = "poisson",formula, correction = FALSE, detailed = F)
-  log_like=sum(unlist(result))
-  log_like_t = sum(unlist(result_t))
-  log_like
-  log_like_t
+result=lapply( 1:p, FUN = evalLogMLike_each_INLA, Y, clust_res, X, population, family = "poisson",formula, correction = FALSE, detailed = T)
+# result_t=lapply( 1:p, FUN = evalLogMLike_each_INLA, Y, cluster_true, X, population, family = "poisson",formula, correction = FALSE, detailed = F)
+#   log_like=sum(unlist(result))
+#   log_like_t = sum(unlist(result_t))
+#   log_like
+#   log_like_t
+```
+```{r echo=TRUE, message=FALSE}
+p = max(clust_res)
+col_n=gray.colors(80, alpha=0.5)
+
+ymin=min(exp(eta)); ymax=max(exp(eta))
+png(width = 960, height = 480, file.path(path_im,'Clustered Function results poly_glm_poisson.png'))
+par(mfrow = c(2,4))
+time = seq(0,1, length.out = nt)
+for(k in 1:p){
+IND=which(clust_res==k)
+plot(time, exp(eta)[,IND[1]], "l", col=col_n[40], xlab="t", ylab="f(t)",
+main=sprintf("Cluster %d", k), ylim=c(ymin, ymax))
+m <- t(matrix(result[[k]]$summary.fitted.values$mean, nrow = nt, byrow = FALSE))
+for(i in 2:length(IND))
+lines(time, exp(eta[,IND[i]]), col=col_n[40])
+lines(time, colMeans(m), col="red")
+}
+dev.off()
+
+png(file.path(path_im,'Cluster Procedure poly_glm_poisson_last300.png'))
+print(fields::image.plot(t(cluster_out[1550:1850,]), main="Cluster Procedure", axes=TRUE, xlab = 'Memembership', ylab = 'Iterations'))
+dev.off()
 ```
