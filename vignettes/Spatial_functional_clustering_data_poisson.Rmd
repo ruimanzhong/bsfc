@@ -120,7 +120,7 @@ MCMC= 10000; BURNIN=5000; THIN=1
 # blas_get_num_procs()
 # blas_set_num_threads(6)
 system.time({
-     Fun_Wave_Clust(target,formula, inla.extra, graph0, init_val, hyperpar, MCMC, BURNIN, THIN, path_res, seed = 1234)
+     BayesClust(target,formula, inla.extra, graph0, init_val, hyperpar, MCMC, BURNIN, THIN, path_res, seed = 1234)
  })
 
 # normal case , MCMC = 10000, THIN = 1:
@@ -199,22 +199,39 @@ init_val<-list("beta"=beta.ini,
                "cluster"= membership.ini, 
                "trees"=mstgraph.ini)
 formula = Yk ~ 1 + Xk + f(id, model = 'iid',hyper = list(prec = list(prior = "loggamma", param = c(0.1, 0.1))))
-MCMC= 1000; BURNIN=100; THIN=1
+MCMC= 3000; BURNIN=500; THIN=1
 ```
 ```{r message=TRUE, warning=FALSE, include=FALSE}
+path_res <- file.path(path_proj, "data", "result","poisson-glm-c10.RData")
 system.time({
-     Fun_Wave_Clust(target,formula, inla.extra, graph0, init_val, hyperpar, MCMC, BURNIN, THIN, path_res, seed = 1234)
+     BayesClust(target,formula,family = 'poisson', graph0, init_val, hyperpar,correction = F,detailed = F, MCMC, BURNIN, THIN, path_res, seed = 1234)
  })
+# 1000 iterations
+#     user   system  elapsed 
+# 6490.794 3292.907 6192.041 
 ```
-
+In case the chain does not converge, we can continue running the chain on the present results
 ```{r}
-path_res <- file.path(path_proj, "data", "result",".RData")
+path_res <- file.path(path_proj, "data", "result","poisson-glm-c10_continue.RData")
+membership.ini <- cluster_out[nrow(cluster_out),]
+mstgraph.ini <- MST_out[[length(MST_out)]]
+clust_uniq=sort(unique(membership.ini)); k=length(clust_uniq)
+target <- list(Y = data$Y, X = X, N = population)
+hyperpar<-list("c"= 0.5)
+init_val<-list("beta"=beta.ini, 
+               "cluster"= membership.ini, 
+               "trees"=mstgraph.ini)
+MCMC= 2000; BURNIN=500; THIN=1 
+ BayesClust(target,formula,family = 'poisson', graph0, init_val, hyperpar,correction = F,detailed = F, MCMC, BURNIN, THIN, path_res, seed = 12345)
+```
+```{r}
 load(file.path(path_res))
 clust_res = cluster_out[nrow(cluster_out),]
 p = max(clust_res)
 result=lapply( 1:p, FUN = evalLogMLike_each_INLA, Y, clust_res, X, population, family = "poisson",formula, correction = FALSE, detailed = F)
-  log_like_vec=unlist(result)
-  log_like=sum(log_like_vec)
-  log_like_t
+result_t=lapply( 1:p, FUN = evalLogMLike_each_INLA, Y, cluster_true, X, population, family = "poisson",formula, correction = FALSE, detailed = F)
+  log_like=sum(unlist(result))
+  log_like_t = sum(unlist(result_t))
   log_like
+  log_like_t
 ```

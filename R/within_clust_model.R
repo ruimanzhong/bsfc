@@ -95,7 +95,7 @@ prepare_data_each <- function(k, Y, membership, X = NULL, N = NULL) {
 
   # predictors
   if(is.vector(X)) {
-    Xk <- rep(X, times = n_k)
+    Xk <- rep(X, times = nk)
   } else if (is.matrix(X)) {
     Xk <- kronecker(rep(1, nk), X)
   } else {

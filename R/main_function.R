@@ -23,7 +23,6 @@
 #' \dontrun{
 #' data <- list(Y = matrix(rnorm(100), ncol=10), X = matrix(rnorm(100), ncol=10))
 #' formula <- Y ~ X1 + X2
-#' inla.extra <- list(correction = TRUE)
 #' graph0 <- matrix(sample(0:1, 100, replace=TRUE), ncol=10)
 #' init_val <- list(trees = graph0, beta = runif(10), cluster = sample(1:5, 10, replace=TRUE))
 #' hyperpar <- list(c = 0.5)
@@ -39,7 +38,6 @@ BayesClust <- function(data, formula = Yk ~ 1 + Xk, family = "normal", graph0, i
   # initial values
 
   mstgraph = init_val[['trees']]
-  beta = init_val[['beta']]
   cluster = init_val[['cluster']]
   k = max(cluster) # number of clusters
   Y = data$Y
@@ -101,7 +99,7 @@ BayesClust <- function(data, formula = Yk ~ 1 + Xk, family = "normal", graph0, i
       # compute log-likelihood ratio
 
       ind_k=which(membership_new==k+1); ns1=length(ind_k)
-      Y_clust=Y[ind_k,]
+
 
       # compute log-prior ratio
       log_A = log(1-c)
@@ -150,7 +148,7 @@ BayesClust <- function(data, formula = Yk ~ 1 + Xk, family = "normal", graph0, i
       cid_newid = merge_res$cluster_newid
 
       ind_k=which(membership_new == cid_newid); ns1=length(ind_k)
-      Y_clust=Y[ind_k,]
+
 
 
       # compute log-prior ratio
@@ -200,7 +198,6 @@ BayesClust <- function(data, formula = Yk ~ 1 + Xk, family = "normal", graph0, i
 
       ind_k=which(membership_new == cid_newid); ns1=length(ind_k)
 
-      Y_clust=Y[ind_k,]
 
       log_prior_merge = 0
 
@@ -216,7 +213,6 @@ BayesClust <- function(data, formula = Yk ~ 1 + Xk, family = "normal", graph0, i
 
       # For hetero variances
       ind_k=which(membership_new==k); ns1=length(ind_k)
-      Y_clust=Y[ind_k,]
 
 
       log_prior_split=0
@@ -224,7 +220,7 @@ BayesClust <- function(data, formula = Yk ~ 1 + Xk, family = "normal", graph0, i
 
       # compute log-likelihood ratio
 
-      log_L_new=evalLogLike.ratio('split',log_L_new_merge$log_like_vec, split_res, Y, X, inla.extra, membership_new, formula, detailed  = F, correction)
+      log_L_new=evalLogLike.ratio('split',log_L_new_merge$log_like_vec, split_res, Y, membership_new, X, N, family, formula, correction, detailed = F, ...)
       log_L = log_L_new$ratio + log_L_new_merge$ratio + log_prior_merge + log_prior_split
 
 
@@ -295,10 +291,10 @@ BayesClust <- function(data, formula = Yk ~ 1 + Xk, family = "normal", graph0, i
   }
 
   ##Update log-likelihood value
-  p=max(cluster)
-  llik_res=lapply(1:p, evalLogLike_each_INLA, Y, X, inla.extra, cluster, formula, detailed = FALSE, correction)
-  log_like_vec=unlist(llik_res)
-  log_like=sum(log_like_vec)
+  p = max(cluster)
+  llik_res = lapply(1:p, evalLogMLike_each_INLA, Y, cluster, X, N, family, formula, correction, FALSE)
+  log_like_vec = unlist(llik_res)
+  log_like = sum(log_like_vec)
 
 }
 
