@@ -21,24 +21,25 @@
 #'
 #' @return A list containing the updated log likelihood vector and the log likelihood ratio (`llratio`).
 #' @export
-evalLogMLike.ratio <- function(move, log_like_vec, control.move, Y, membership, X = NULL, N = NULL, family = "normal", formula = Yk ~ 1 + Xk, correction = FALSE, detailed = FALSE, ...){
+log_mlike_ratio <- function(move, log_mlike_vec, proposed_move, Y, X = NULL, N = NULL,
+    formula = Yk ~ 1 + Xk, family = "normal", correction = FALSE, detailed = FALSE, ...){
 
-  # update local likelihoods for split move
+  # update local marginal likelihoods for split move
   if(move == 'split'){
-    log_like_vec_new <- log_like_vec
-    M1 <- evalLogMLike_each(control.move$clust_old, Y, membership, X, N, family, formula, correction, detailed, ...)
-    M2 <- evalLogMLike_each(control.move$k, Y, membership, X, N, family, formula, correction, detailed, ...)
-    log_like_vec_new[control.move$clust_old] <- M1
-    log_like_vec_new[control.move$k] <- M2
-    llratio <- M1 + M2 - log_like_vec[control.move$clust_old]
+    log_like_vec_new <- log_mlike_vec
+    M1 <- log_mlik_each(proposed_move$clust_old, Y, proposed_move$cluster, X, N, formula, family, correction, detailed, ...)
+    M2 <- log_mlik_each(proposed_move$k, Y, proposed_move$cluster, X, N, formula, family, correction, detailed, ...)
+    log_like_vec_new[proposed_move$clust_old] <- M1
+    log_like_vec_new[proposed_move$k] <- M2
+    llratio <- M1 + M2 - log_mlike_vec[proposed_move$clust_old]
   }
 
-  # update local likelihoods for merge move
+  # update local margina likelihoods for merge move
   if(move == 'merge'){
-    M1 <- evalLogMLike_each(control.move$cluster_newid, Y, membership, X, N, family, formula, correction, detailed, ...)
-    log_like_vec_new <- log_like_vec[-control.move$cluster_rm]
-    log_like_vec_new[control.move$cluster_newid] <- M1
-    llratio <-  M1 - sum(log_like_vec[c(control.move$cluster_rm, control.move$cluster_comb)])
+    log_like_vec_new <- log_mlike_vec[-proposed_move$cluster_rm]
+    M1 <- log_mlik_each(proposed_move$cluster_newid, Y, proposed_move$cluster, X, N, formula, family, correction, detailed, ...)
+    log_like_vec_new[proposed_move$cluster_newid] <- M1
+    llratio <-  M1 - sum(log_mlike_vec[c(proposed_move$cluster_rm, proposed_move$cluster_newid)])
   }
 
   return(list(ratio = llratio, log_mlike_vec = log_like_vec_new))
