@@ -23,9 +23,9 @@
 #' \dontrun{
 #' data <- list(Y = matrix(rnorm(100), ncol=10), X = matrix(rnorm(100), ncol=10))
 #' formula <- Y ~ X1 + X2
-#' inla.extra <- list(correction = TRUE)
-#' graph <- matrix(sample(0:1, 100, replace=TRUE), ncol=10)
-#' init_val <- list(trees = graph, beta = runif(10), cluster = sample(1:5, 10, replace=TRUE))
+
+#' graph0 <- matrix(sample(0:1, 100, replace=TRUE), ncol=10)
+#' init_val <- list(trees = graph0, beta = runif(10), cluster = sample(1:5, 10, replace=TRUE))
 #' hyperpar <- list(c = 0.5)
 #' path_save <- "path/to/save/results/"
 #'
@@ -45,7 +45,17 @@ spfc <- function(Y, graph, X = NULL, N = NULL, formula = Yk ~ 1 + Xk, family = "
   cluster <- initial[['cluster']]
   k = max(cluster)
 
-  # hyperparameters
+  mstgraph = init_val[['trees']]
+  cluster = init_val[['cluster']]
+  k = max(cluster) # number of clusters
+  Y = data$Y
+  X = data$X
+  N = data$N
+  #For recording the acceptance ratio
+  hyper_cnt = 0; birth_cnt=0; death_cnt=0; change_cnt=0;
+  nt = ncol(Y); ns = nrow(Y);
+  ################# RJMCMC ####################
+
   rhy = 0.05
   c = hyperpar$c
 
@@ -96,7 +106,6 @@ spfc <- function(Y, graph, X = NULL, N = NULL, formula = Yk ~ 1 + Xk, family = "
       # } else {rd_new = 0.3}
       log_P = log(rd_new) - log(rb)
 
-      # prior ratio
       log_A = log(1-c)
 
       # marginal likelihood ratio
@@ -132,7 +141,6 @@ spfc <- function(Y, graph, X = NULL, N = NULL, formula = Yk ~ 1 + Xk, family = "
       }else {rb_new = 0.425}
       log_P = log(rb_new) - log(rd)
 
-      # prior ratio
       log_A = -log(1-c)
 
       # marginal likelihood ratio
@@ -160,7 +168,9 @@ spfc <- function(Y, graph, X = NULL, N = NULL, formula = Yk ~ 1 + Xk, family = "
       ## First: Propose a merge movement (c1, c2) -> c2
       merge_res = mergeCluster(mstgraph, edge_status, cluster)
       membership_new = merge_res$cluster
+      
       cid_rm = merge_res$cluster_rm
+
       k = k-1
 
       log_L_new_merge = log_mlik_ratio('merge', log_mlike_vec, merge_res, Y, X, N, formula, family, correction, FALSE, ...)
@@ -171,9 +181,11 @@ spfc <- function(Y, graph, X = NULL, N = NULL, formula = Yk ~ 1 + Xk, family = "
       membership_new = split_res$cluster
       k = k+1
 
+
       log_L_new = log_mlik_ratio('split', log_L_new_merge$log_mlike_vec, split_res, Y, X, N,
         formula, family, correction, FALSE, ...)
       log_L = log_L_new$ratio + log_L_new_merge$ratio
+
 
       ## Accept with probability
       acc_prob = min(0, log_L)

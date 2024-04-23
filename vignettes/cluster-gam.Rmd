@@ -1,0 +1,129 @@
+---
+title: "Clustering-gam-data"
+author: "Ruiman"
+date: "2024-04-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+All simulated datasets are included in the folder \textcolor{red}{Sim-Data}. Here, we take the shifted Doppler signals with b-splines basis functions as an example to illustrate the usage of the Fclust-RST method. 
+
+- We first install and load the required R packages:
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+rm(list = ls())
+packages = c( "gridExtra", "deldir", "fields", "igraph",  "devtools", "ggplot2", "Matrix.utils", "grid", 
+             "parallel", "class", "spgwr", 'sf',
+             "salso", 'spfc',
+             "fda","mclust")
+
+## Now load or install&load all packages
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      # install.packages(x, dependencies = TRUE, 
+      #          INSTALL_opts = '--no-lock', 
+      #          repos = "http://cran.us.r-project.org")
+      library(x, character.only = TRUE)
+    }else
+      library(x, character.only = TRUE)
+  }
+)
+path_proj <- '~/Documents/project3'
+path_data <- file.path(path_proj, "data")
+path_raw <- file.path(path_data, "raw")
+path_sim <- file.path(path_data, "simulated")
+path_res <- file.path(path_proj, "data", "result","normal_gam.RData")
+path_im <- file.path(path_data,  "image")
+```
+
+- Read the R code for implementing Fclust-RST:
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+##Load data
+data = readRDS(file.path(path_sim, 'spatial-data-gam.rds'))
+map <-  readRDS(file.path(path_raw, "spatial-domain-clusters.rds"))
+cluster_true = data$cluster
+eta = data$eta
+Y = data$Y
+nt=dim(Y)[1]; ns=dim(Y)[2]  
+## build design matrix
+time = seq(0, 1, length.out = nt)
+# compute fixed effects
+X = poly(time, 2, raw = TRUE, simple = TRUE)
+population <- matrix(map$population, nrow = nt, ncol = ns, byrow = T)
+```
+
+- Obtain initial estimates for the between-cluster parameters. 
+   \begin{itemize}
+     \item  The hyperparameter $\mathcal{G}$ is fixed to be the true graph $\mathcal{G}_0$ used for generating the cluster-wise constant Doppler signals.      \item  The initial values of wavelet coefficients, $\{\hat{\boldsymbol{\beta}}(\mathbf{s})\}$, are obtained by using the least-square estimates for each location $\mathbf{s}$. 
+     \item  For each edge of $\mathcal{G}$ connecting $\mathbf{s}$ and $\mathbf{s}^{\prime}$, the Euclidean distance of $\hat{\boldsymbol{\beta}}(\mathbf{s})$ and $\hat{\boldsymbol{\beta}}(\mathbf{s}^{\prime})$ is used as its edge weight. Then, the initial minimum spanning tree (MST), $\mathcal{T}^{(0)}$, is obtained based on $\mathcal{G}$ and its assigned edge weights. 
+     \item  By removing $(k_p^{(0)}-1)$ edges of $\mathcal{T}^{(0)}$, we obtain $k_p^{(0)}$ initial clusters. 
+  \end{itemize}
+```{r echo=TRUE, warning=FALSE}
+# Build MST 
+set.seed(43)
+coords <- st_coordinates(st_centroid(map)[,3])
+# create graph
+adjacency_matrix <- sf::st_touches(map) %>% as("matrix")
+graph0 <- graph.adjacency(adjacency_matrix, mode = "undirected", diag = FALSE)
+
+##Initial beta estimates
+ratio = matrix(0,nrow = nt, ncol = ns)
+for(i in 1:ns){ratio[,i] = as.matrix(Y[,i]/population[,i])}
+
+######  Construct an initial MST
+beta.ini= ginv(t(X) %*% X) %*% t(X) %*% eta # p * s
+beta.ini = t(beta.ini) 
+
+inc.mat=get.edgelist(graph0, names = F)
+weights=sqrt(sum(beta.ini[inc.mat[,1]]-beta.ini[inc.mat[,2]])^2)
+E(graph0)$weights=weights
+mstgraph.ini=mst(graph0)
+
+V(mstgraph.ini)$vid=1:ns
+rmid=order(E(mstgraph.ini)$weights, decreasing = TRUE)[1:15]
+
+graph_comp=components(delete.edges(mstgraph.ini, rmid))
+membership.ini=graph_comp$membership
+
+membership=membership.ini ##cluster membership
+mstgraph=mstgraph.ini     ## initial MST
+cluster_true 
+```
+- Initialize model parameters:
+ target is list containging response Y and covariate X
+ hyperpar is a parameter contains the penalty of the number of clusters
+ init_val includes parameters of initial beta, cluster memebership and spanning tree.
+ inla.extra and formula are components of INLA function. inla.extra descrbes the model type (family, normal, poisson, binomial), and potential parameters; 
+ formula is for fitting within-cluster model, thus, the response name should be 'Yk'
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+clust_uniq=sort(unique(membership.ini)); k=length(clust_uniq)
+target <- list(Y = eta, X = time)
+hyperpar<-list("c"= 0.5)
+###List of initial values
+init_val<-list(
+               "cluster"= membership.ini, 
+               "trees"=mstgraph.ini)
+formula= Yk~ 1  +f(Xk, model = "rw1", scale.model = F,hyper = list(theta = list(prior="pc.prec", param=c(1,0.01))))
+MCMC= 5000; BURNIN=2000; THIN=1
+```
+- Run the Fclust-RST method on normal response data:
+```{r message=TRUE, warning=FALSE, include=FALSE}
+# library(RhpcBLASctl)
+# blas_get_num_procs()
+# blas_set_num_threads(6)
+system.time({
+    BayesClust(target,formula,family = 'normal', graph0, init_val, hyperpar,correction = T,detailed = F, MCMC, BURNIN, THIN, path_res, seed = 1234)
+ })
+```
+```{r}
+
+model = evalLogMLike_each_INLA(1, eta, as.numeric(cluster_true), time , NULL, family = "normal",formula, correction = T, detailed = F)
+model
+
+```
