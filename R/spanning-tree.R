@@ -1,5 +1,8 @@
-##The auxiliary functions for building spanning tree
-####Obtain the posterior log-likelihood value
+# https://doi.org/10.1214/22-AOAS1643
+# https://doi.org/10.1214/22-AOAS1643SUPPB
+
+## The auxiliary functions for building spanning tree
+
 ################################################################################
 ################################################################################
 ######################For spanning-tree operations
