@@ -21,7 +21,7 @@
 #'
 #' @return A list containing the updated log likelihood vector and the log likelihood ratio (`llratio`).
 #' @export
-log_mlike_ratio <- function(move, log_mlike_vec, proposed_move, Y, X = NULL, N = NULL,
+log_mlik_ratio <- function(move, log_mlike_vec, proposed_move, Y, X = NULL, N = NULL,
     formula = Yk ~ 1 + Xk, family = "normal", correction = FALSE, detailed = FALSE, ...){
 
   # update local marginal likelihoods for split move

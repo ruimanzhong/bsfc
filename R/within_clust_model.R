@@ -70,6 +70,12 @@ log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1
   }
 }
 
+log_mlik_all <- function(Y, membership, X = NULL, N = NULL, formula = Yk ~ 1 + Xk,
+                         family = "normal", correction = FALSE, ...) {
+
+  k = max(membership)
+  sapply(1:k, log_mlik_each, Y, membership, X, N, formula, family, correction, FALSE, ...)
+}
 
 ###############################
 
