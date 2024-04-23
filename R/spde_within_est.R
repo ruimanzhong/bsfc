@@ -37,15 +37,3 @@ evalLogLike_each_INLA <- function(k, Y, X, population, membership, a0 = NULL, b0
   }
 }
 
-# evalLogLike_all_parallel2 <- function(Y, X, population, membership, cl,a0 = NULL, b0 = NULL, detailed = F) {
-#   
-#   p=max(membership)
-#   llik_res=parLapply(cl, 1:p, evalLogLike_each_INLA, Y, X, population, membership, a0, b0, detailed)
-#   log_like_vec=unlist(llik_res)
-#   llik_all=sum(log_like_vec)
-#   
-#   
-#   return(list(llik_all=llik_all,log_like_vec=log_like_vec))
-#   
-# }
-
