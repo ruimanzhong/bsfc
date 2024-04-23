@@ -37,25 +37,24 @@
 #' result <- evalLogLike_each_INLA(1, Y, X, inla.extra, membership, custom_formula, TRUE)
 #' }
 #' @export
-evalLogMLike_each_INLA <- function(k, Y, membership, X = NULL, N = NULL, family = "normal",
-                                  formula = Yk ~ 1 + Xk, correction = FALSE, detailed = FALSE, ...) {
+log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1 + Xk,
+                          family = "normal", correction = FALSE, detailed = FALSE, ...) {
   inla_data <- prepare_data_each(k, Y, membership, X, N)
-  Nk = inla_data[['Nk']]
   if(family == "poisson"){
-    model <- INLA::inla(formula, family = "poisson", E = Nk,
+    model <- INLA::inla(formula, family, E = Nk,
                         data = inla_data, control.predictor = list(compute = TRUE),
                         control.compute = list(config=TRUE), ...)
   } else if (family == "binomial"){
-    model <- INLA::inla(formula, family = "binomial", Ntrials = inla_data$N,
+    model <- INLA::inla(formula, family, Ntrials = Nk,
                         data = inla_data, control.predictor = list(compute = TRUE),
                         control.compute = list(config=TRUE), ...)
   } else if (family == "nbinomial"){
-    model <- INLA::inla(formula, family = "binomial",
-                 control.family = list(variant = 1), Ntrials = inla_data$N,
+    model <- INLA::inla(formula, family,
+                 control.family = list(variant = 1), Ntrials = Nk,
                  data = inla_data, control.predictor = list(compute = TRUE),
                  control.compute = list(config=TRUE), ...)
   } else if (family == "normal" | is.null(family)){
-    model <- INLA::inla(formula, family = "normal",
+    model <- INLA::inla(formula, family,
                  data = inla_data, control.predictor = list(compute = TRUE),
                  control.compute = list(config=TRUE), ...)
   }
@@ -71,6 +70,12 @@ evalLogMLike_each_INLA <- function(k, Y, membership, X = NULL, N = NULL, family 
   }
 }
 
+log_mlik_all <- function(Y, membership, X = NULL, N = NULL, formula = Yk ~ 1 + Xk,
+                         family = "normal", correction = FALSE, ...) {
+
+  k = max(membership)
+  sapply(1:k, log_mlik_each, Y, membership, X, N, formula, family, correction, FALSE, ...)
+}
 
 ###############################
 
