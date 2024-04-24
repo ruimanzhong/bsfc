@@ -104,7 +104,6 @@ cluster_true
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 clust_uniq=sort(unique(membership.ini)); k=length(clust_uniq)
 target <- list(Y = eta, X = time)
-hyperpar<-list("c"= 0.5)
 ###List of initial values
 init_val<-list(
                "cluster"= membership.ini, 
@@ -118,7 +117,9 @@ MCMC= 5000; BURNIN=2000; THIN=1
 # blas_get_num_procs()
 # blas_set_num_threads(6)
 system.time({
-    BayesClust(target,formula,family = 'normal', graph0, init_val, hyperpar,correction = T,detailed = F, MCMC, BURNIN, THIN, path_res, seed = 1234)
+bsfc(eta, graphdata = list(graph = graph0, mst = mstgraph.ini, cluster = membership.ini), X = X, N = NULL,
+                formula, family = "normal", hyperpar = list(c = 0.5),
+                correction = T, niter = 2000, burnin = 10, thin = 1, path_save = path_res) 
  })
 ```
 ```{r}

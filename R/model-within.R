@@ -34,7 +34,7 @@
 #' f(idx, model = 'iid',hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
 #' formula= Yk ~ 1  + f(ids,model="iid",group=idt, control.group=list(model="ar1"),hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
 #' # Call the function
-#' result <- evalLogLike_each_INLA(1, Y, X, inla.extra, membership, custom_formula, TRUE)
+#' result <- log_mlik_each(1, Y, X, inla.extra, membership, custom_formula, TRUE)
 #' }
 #' @export
 log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1 + Xk,
@@ -120,6 +120,6 @@ mlik_corrected <- function(inla_model) {
   Q <- inla_model[["misc"]][["configs"]][["config"]][[1]][["Qprior"]]
   dim <- dim(Q)[1] - 1
   det <- sum(diag(as.matrix(SparseM::chol(Q[1:dim,1:dim])))^2)
-  as.numeric(inla_model[["mlik"]][[1]]) + log(det/theta^dim) * 0.5
+  as.numeric(model[["mlik"]][[1]]) + log(det) * 0.5 - dim * log(theta)
 }
 

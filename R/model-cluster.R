@@ -29,7 +29,7 @@
 #' hyperpar <- list(c = 0.5)
 #' path_save <- "path/to/save/results/"
 #'
-#' BayesClust(data,family, formula, graph, init_val, hyperpar, MCMC, burnin, THIN, path_save, seed = 1234)
+#' bsfc(data,family, formula, graph, init_val, hyperpar, MCMC, burnin, THIN, path_save, seed = 1234)
 #'}
 #' @export
 bsfc = function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), X = NULL, N = NULL,
