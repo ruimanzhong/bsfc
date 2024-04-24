@@ -101,21 +101,12 @@ cluster_true
  init_val includes parameters of initial beta, cluster memebership and spanning tree.
  inla.extra and formula are components of INLA function. inla.extra descrbes the model type (family, normal, poisson, binomial), and potential parameters; 
  formula is for fitting within-cluster model, thus, the response name should be 'Yk'
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-clust_uniq=sort(unique(membership.ini)); k=length(clust_uniq)
-target <- list(Y = eta, X = time)
-###List of initial values
-init_val<-list(
-               "cluster"= membership.ini, 
-               "trees"=mstgraph.ini)
-formula= Yk~ 1  +f(Xk, model = "rw1", scale.model = F,hyper = list(theta = list(prior="pc.prec", param=c(1,0.01))))
-MCMC= 5000; BURNIN=2000; THIN=1
-```
 - Run the Fclust-RST method on normal response data:
 ```{r message=TRUE, warning=FALSE, include=FALSE}
 # library(RhpcBLASctl)
 # blas_get_num_procs()
 # blas_set_num_threads(6)
+formula= Yk~ 1  +f(id, model = "rw1", scale.model = F,hyper = list(theta = list(prior="pc.prec", param=c(1,0.01))))
 system.time({
 bsfc(eta, graphdata = list(graph = graph0, mst = mstgraph.ini, cluster = membership.ini), X = X, N = NULL,
                 formula, family = "normal", hyperpar = list(c = 0.5),
@@ -123,8 +114,8 @@ bsfc(eta, graphdata = list(graph = graph0, mst = mstgraph.ini, cluster = members
  })
 ```
 ```{r}
+formula= Yk~ 1  +f(Xk, model = "rw1", scale.model = F)
+model = log_mlik_each(1, eta, as.numeric(cluster_true), time , NULL, family = "normal",formula, correction = T, detailed = T)
 
-model = evalLogMLike_each_INLA(1, eta, as.numeric(cluster_true), time , NULL, family = "normal",formula, correction = T, detailed = F)
-model
 
 ```

@@ -115,11 +115,11 @@ prepare_data_each <- function(k, Y, membership, X = NULL, N = NULL) {
 
 ## Auxiliary function to correct the marginal likelihood of INLA model
 
-mlik_corrected <- function(inla_model) {
-  theta <- exp(as.numeric(inla_model[["misc"]][["configs"]][["config"]][[1]][["theta"]][[2]]))
+mlik_corrected <- function(inla_model,family) {
+  if(family == "normal"){theta <- exp(as.numeric(inla_model[["misc"]][["configs"]][["config"]][[1]][["theta"]][[2]]))}else{theta <- exp(as.numeric(inla_model[["misc"]][["configs"]][["config"]][[1]][["theta"]][[1]]))}
   Q <- inla_model[["misc"]][["configs"]][["config"]][[1]][["Qprior"]]
   dim <- dim(Q)[1] - 1
   det <- sum(diag(as.matrix(SparseM::chol(Q[1:dim,1:dim])))^2)
-  as.numeric(model[["mlik"]][[1]]) + log(det) * 0.5 - dim * log(theta)
+  as.numeric(model[["mlik"]][[1]]) + log(det) * 0.5 - dim * log(theta) * 0.5
 }
 
