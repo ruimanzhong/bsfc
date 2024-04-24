@@ -106,16 +106,31 @@ cluster_true
 # library(RhpcBLASctl)
 # blas_get_num_procs()
 # blas_set_num_threads(6)
-formula= Yk~ 1  +f(id, model = "rw1", scale.model = F,hyper = list(theta = list(prior="pc.prec", param=c(1,0.01))))
+formula= Yk~ f(id, model = "rw1", scale.model = F,hyper = list(theta = list(prior="pc.prec", param=c(1,0.01))))
 system.time({
-bsfc(eta, graphdata = list(graph = graph0, mst = mstgraph.ini, cluster = membership.ini), X = X, N = NULL,
+bsfc(eta, graphdata = list(graph = graph0, mst = mstgraph.ini, cluster = membership.ini), X = time, N = NULL,
                 formula, family = "normal", hyperpar = list(c = 0.5),
                 correction = T, niter = 2000, burnin = 10, thin = 1, path_save = path_res) 
  })
 ```
 ```{r}
-formula= Yk~ 1  +f(Xk, model = "rw1", scale.model = F)
-model = log_mlik_each(1, eta, as.numeric(cluster_true), time , NULL, family = "normal",formula, correction = T, detailed = T)
-
-
+formula= Yk~ f(id, model = "rw1", scale.model = F,hyper = list(theta = list(prior="pc.prec", param=c(1,0.01))))
+model = log_mlik_each(1, eta, as.numeric(cluster_true), X = time, N = NULL, formula,
+                          family = "normal", correction = FALSE, detailed = F)
+# log_mlike_vec = log_mlik_all(eta, as.numeric(cluster_true), time, N = NULL, formula,family ="normal", correction = F)
+#   log_mlike = sum(log_mlike_vec)
+log_mlike_vec_ii = log_mlik_all(eta[,IND],1:length(IND), time, N = NULL, formula,family ="normal", correction = F)
+  log_mlike_ii = sum(log_mlike_vec_ii)
+ model
+  log_mlike_ii
+```
+```{r}
+col_n=gray.colors(80, alpha=0.5)
+IND=which(as.numeric(cluster_true)==1)
+plot(time, eta[,IND[1]], "l", col=col_n[40], xlab="t", ylab="f(t)",
+main=sprintf("Cluster %d", 1), ylim=c(min(eta)-0.5, max(eta)+ 0.5))
+m <- t(matrix(model$summary.fitted.values$mean, nrow = nt, byrow = FALSE))
+for(i in 2:length(IND))
+lines(time, eta[,IND[i]], col=col_n[40])
+lines(time, colMeans(m), col="red")
 ```
