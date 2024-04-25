@@ -21,4 +21,5 @@ You can install the development version of `spfc` from GitHub with:
 
 ```r
 # install.packages("devtools")
-devtools::install_github("ruimanzhong/spfc")
+devtools::install_github("ruimanzhong/spfc", vignette = F)
+
