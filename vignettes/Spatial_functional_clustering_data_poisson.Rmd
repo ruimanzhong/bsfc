@@ -204,7 +204,7 @@ MCMC= 3000; BURNIN=500; THIN=1
 ```{r message=TRUE, warning=FALSE, include=FALSE}
 path_res <- file.path(path_proj, "data", "result","poisson-glm-c10.RData")
 system.time({
-     BayesClust(target,formula,family = 'poisson', graph0, init_val, hyperpar,correction = F,detailed = F, MCMC, BURNIN, THIN, path_res, seed = 1234)
+    bsfc(target,formula,family = 'poisson', graph0, init_val, hyperpar,correction = F,detailed = F, MCMC, BURNIN, THIN, path_res, seed = 1234)
  })
 # 1000 iterations
 #     user   system  elapsed 
@@ -222,7 +222,7 @@ init_val<-list("beta"=beta.ini,
                "cluster"= membership.ini, 
                "trees"=mstgraph.ini)
 MCMC= 2000; BURNIN=500; THIN=1 
- BayesClust(target,formula,family = 'poisson', graph0, init_val, hyperpar,correction = F,detailed = F, MCMC, BURNIN, THIN, path_res, seed = 12345)
+ bsfc(target,formula,family = 'poisson', graph0, init_val, hyperpar,correction = F,detailed = F, MCMC, BURNIN, THIN, path_res, seed = 12345)
 ```
 ```{r}
 load(file.path(path_res))

@@ -206,7 +206,7 @@ bsfc = function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), X
 
     if (iter %% 10 == 0) {
       cat('Iteration ', iter, ': clusters = ', k, ', births = ', birth_cnt, ', deaths = ',
-          death_cnt, ', changes = ', change_cnt, ', hypers = ', hyper_cnt, '\n', sep = "")
+          death_cnt, ', changes = ', change_cnt, ', hypers = ', hyper_cnt, 'log_mlike = ', log_mlike,'\n', sep = "")
     }
 
     if (iter > burnin & (iter - burnin) %% thin == 0) {
@@ -226,11 +226,65 @@ bsfc = function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), X
 
   }
 
+  p = max(cluster)
+  final_model =  lapply(1:p, log_mlik_each, Y, cluster, X, N, formula, family, correction = F, detailed = T, ...)
   # Final result
   output = list(
     cluster = cluster_out, log_mlike = log_mlike_out, mst = mst_out,
-    counts = c(births = birth_cnt, deaths = death_cnt, changes = change_cnt, hypers = hyper_cnt)
+    counts = c(births = birth_cnt, deaths = death_cnt, changes = change_cnt, hypers = hyper_cnt),
+    model = final_model
   )
   if (!is.null(path_save)) saveRDS(output, file = path_save)
   return(output)
+}
+
+#' Continue MCMC Clustering Procedure
+#'
+#' This function continues a Bayesian spatial fusion clustering (BSFC) process based on a previous result.
+#' It is specifically designed to extend the MCMC iterations from a stopping point using the prior state
+#' of cluster assignments and graphical model parameters.
+#'
+#' @param result List containing results from a previous BSFC clustering, expected to include
+#'        a minimum spanning tree (`mst`) and cluster assignments.
+#' @param Y Numeric vector or matrix of response variables used in the initial clustering.
+#' @param X Optional numeric vector or matrix of covariates used in the model (default is `NULL`).
+#' @param N Optional numeric vector specifying the number of trials or cases, relevant for
+#'        families like binomial (default is `NULL`).
+#' @param formula An object of class \code{\link[stats]{formula}}, specifying the model used in the analysis.
+#' @param family Character string specifying the family of distributions to use for the model.
+#'        Defaults to "normal".
+#' @param hyperpar List of hyperparameters used in the model; defaults to a list with `c = 0.5`.
+#' @param correction Logical indicating whether correction for overdispersion or other factors
+#'        should be applied. Defaults to `FALSE`.
+#' @param niter Integer specifying the number of additional MCMC iterations to perform.
+#' @param burnin Integer specifying the number of burn-in iterations to discard in this continuation.
+#' @param thin Integer specifying the thinning interval for recording the results.
+#' @param path_save Character string specifying the file path to save the continuation results.
+#'        If `NULL`, results may not be saved to file.
+#' @param ... Additional arguments passed to the underlying `bsfc` function.
+#'
+#' @details The function takes the last state of the Markov chain from a previous `bsfc` execution and
+#'          uses it as the starting point for additional MCMC iterations. This is useful for extending
+#'          the analysis without restarting the process, thereby saving computational resources and time.
+#'
+#' @return The function does not return a value within R but may output results to files if `path_save`
+#'         is specified. The results include updated cluster assignments and model parameters after
+#'         the additional MCMC iterations.
+#'
+#' @examples
+#' # Assuming `result` is already obtained from a previous bsfc run:
+#' \dontrun{
+#' continue_bsfc(result, Y = data$response, X = data$covariates, N = data$trials,
+#'               formula = Yk ~  1 + Xk, family = "normal", hyperpar = list(c = 0.1),
+#'               correction = TRUE, niter = 500, burnin = 50, thin = 5,
+#'               path_save = "path/to/continue_results/")
+#'}
+#' @export
+continue_bsfc <- function(result, Y, X = NULL, N = NULL,
+              formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.5),
+              correction = FALSE, niter = 100, burnin = 0, thin = 1, path_save = NULL, ... ){
+  n = length(result[["mst"]])
+  bsfc(eta, graphdata = list(graph = NULL, mst = result[["mst"]][[n]], cluster = result$cluster[n,]), X = time, N = NULL,
+       formula, family = "normal", hyperpar = list(c = 0.5),
+       correction = T, niter = 2000, burnin = 1000, thin = 1, path_save = path_res)
 }

@@ -106,31 +106,44 @@ cluster_true
 # library(RhpcBLASctl)
 # blas_get_num_procs()
 # blas_set_num_threads(6)
-formula= Yk~ f(id, model = "rw1", scale.model = F,hyper = list(theta = list(prior="pc.prec", param=c(1,0.01))))
+formula= Yk~ f(Xk, model = "rw1", scale.model = T)
 system.time({
 bsfc(eta, graphdata = list(graph = graph0, mst = mstgraph.ini, cluster = membership.ini), X = time, N = NULL,
                 formula, family = "normal", hyperpar = list(c = 0.5),
-                correction = T, niter = 2000, burnin = 10, thin = 1, path_save = path_res) 
+                correction = T, niter = 1800, burnin = 1000, thin = 1, path_save = path_res) 
  })
 ```
+If more iterations need to converge, we could use continue_bsfc() 
 ```{r}
-formula= Yk~ f(id, model = "rw1", scale.model = F,hyper = list(theta = list(prior="pc.prec", param=c(1,0.01))))
-model = log_mlik_each(1, eta, as.numeric(cluster_true), X = time, N = NULL, formula,
-                          family = "normal", correction = FALSE, detailed = F)
-# log_mlike_vec = log_mlik_all(eta, as.numeric(cluster_true), time, N = NULL, formula,family ="normal", correction = F)
-#   log_mlike = sum(log_mlike_vec)
-log_mlike_vec_ii = log_mlik_all(eta[,IND],1:length(IND), time, N = NULL, formula,family ="normal", correction = F)
-  log_mlike_ii = sum(log_mlike_vec_ii)
- model
-  log_mlike_ii
+result = readRDS(path_res)
+n = length(result[['mst']])
+continue_bsfc(eta, graphdata = list(graph = graph0, mst = result[["mst"]][[n]], cluster = result$cluster[n,]), X = time, N = NULL,
+                formula, family = "normal", hyperpar = list(c = 0.5),
+                correction = T, niter = 3000, burnin = 1000, thin = 1, path_save = path_res) 
 ```
 ```{r}
-col_n=gray.colors(80, alpha=0.5)
-IND=which(as.numeric(cluster_true)==1)
-plot(time, eta[,IND[1]], "l", col=col_n[40], xlab="t", ylab="f(t)",
-main=sprintf("Cluster %d", 1), ylim=c(min(eta)-0.5, max(eta)+ 0.5))
-m <- t(matrix(model$summary.fitted.values$mean, nrow = nt, byrow = FALSE))
-for(i in 2:length(IND))
-lines(time, eta[,IND[i]], col=col_n[40])
-lines(time, colMeans(m), col="red")
+result = readRDS(path_res)
+clust_res = result$cluster[nrow(result$cluster),]
+p = max(clust_res)
+final_model =  lapply(1:p, log_mlik_each, eta, clust_res, X, NULL, formula, correction = F, detailed = T)
+
+plotClusterMap(cluster_true = cluster_true,clust_res = as.factor(clust_res), map, file.path(path_im, 'Cluster_map_gam_normal_res.png'))
+
+plotClusterFun(eta,nt,clust_res,final_model,a = 3, b=4, file.path(path_im, 'Cluster_fun_gam_normal_res.png'))
+
+
+  data.frame(id = 1:length(result$log_mlike), log_mlike = result$log_mlike) |>
+    ggplot() +
+    geom_line(aes(id, log_mlike)) +
+    labs(x = "iteration", y = "log marginal likelihood")
+table(cluster_true, result$cluster[nrow(result$cluster),])
+```
+```{r}
+formula= Yk~ f(Xk, model = "rw1", scale.model = T)
+log_mlike_vec_res = log_mlik_all(eta,result$cluster[800,], time, N = NULL, formula,family ="normal", correction = T)
+log_mlike_res = sum(log_mlike_vec_res)
+  log_mlike_vec = log_mlik_all(eta, as.numeric(cluster_true), time, NULL, formula, "normal", correction = T)
+  log_mlike = sum(log_mlike_vec)
+log_mlike_vec_res
+log_mlike
 ```
