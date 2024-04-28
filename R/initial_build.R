@@ -10,6 +10,7 @@
 #'        'deltri' (Delaunay triangulation), and 'adjmat' (adjacency matrix based on spatial contiguity).
 #' @param para Numeric value used as a parameter for the graph construction method, such as the number
 #'        of neighbors (k) or a distance threshold (eps), depending on the method.
+#' @param nclust Integer, the initial number of clusters
 #' @param weights Optional numeric vector of weights for the edges in the graph. If NULL, random weights are assigned.
 #' @param seed Integer value to set the random seed for reproducibility.
 #'
@@ -21,18 +22,27 @@
 #'   library(sf)
 #'   library(igraph)
 #'   # Assuming 'map' is an sf object containing spatial data
-#'   result <- initial.mst.build(map, method = 'knn', para = 5)
+#'   result <- initial.mst.build(map, method = 'knn', para = 5, nclust = 5)
 #'   print(result$graph0)
 #'   print(result$mstgraph.ini)
 #' }
 #'
 #' @export
-initial.mst.build <- function(map, method = 'knn', para = 10, weights = NULL, seed = 1234){
+initial.mst.build <- function(map, method = 'knn', para = 10, nclust = 10, weights = NULL, seed = 1234){
   set.seed(seed)
+  coords <- st_coordinates(st_centroid(map)[,3])
+  ns = dim(coords)[1]
   graph0 = ConstructGraph0(map, method = method, para = para)
-  if(is.null(weights)) { weights <- runif(length(E(graph0)), 0, 1) }
-  mstgraph.ini = mst(graph0, weights = weights)
-  return(list(graph0 = graph0, mstgraph.ini = mstgraph.ini))
+  if(is.null(weights) & is.null(graph0$weight)) { weight <- runif(length(E(graph0)), 0, 1)
+  E(graph0)$weight = weight}
+  if(!is.null(weights)){E(graph0)$weight = weights}
+  mstgraph.ini = mst(graph0)
+  V(mstgraph.ini)$vid=1:ns
+  rmid=order(E(mstgraph.ini)$weight, decreasing = TRUE)[1:(nclust-1)]
+
+  graph_comp=components(delete.edges(mstgraph.ini, rmid))
+  membership.ini=graph_comp$membership
+  return(list(graph0 = graph0, mstgraph.ini = mstgraph.ini, cluster = membership.ini))
 }
 
 #' Construct Initial Graph from Spatial Data

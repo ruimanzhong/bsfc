@@ -16,7 +16,7 @@ All simulated datasets are included in the folder \textcolor{red}{Sim-Data}. Her
 rm(list = ls())
 packages = c( "gridExtra", "deldir", "fields", "igraph",  "devtools", "ggplot2", "Matrix.utils", "grid", 
              "parallel", "class", "spgwr", 'sf',
-             "salso", 'spfc',
+             "salso", 'bsfc','cccd',
              "fda","mclust")
 
 ## Now load or install&load all packages
@@ -36,12 +36,9 @@ path_proj <- '~/Documents/project3'
 path_data <- file.path(path_proj, "data")
 path_raw <- file.path(path_data, "raw")
 path_sim <- file.path(path_data, "simulated")
-path_res <- file.path(path_proj, "data", "result","normal_gam.RData")
 path_im <- file.path(path_data,  "image")
 ```
-
-- Read the R code for implementing Fclust-RST:
-
+Load spatial-temporal data and map
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 ##Load data
@@ -64,53 +61,42 @@ population <- matrix(map$population, nrow = nt, ncol = ns, byrow = T)
      \item  For each edge of $\mathcal{G}$ connecting $\mathbf{s}$ and $\mathbf{s}^{\prime}$, the Euclidean distance of $\hat{\boldsymbol{\beta}}(\mathbf{s})$ and $\hat{\boldsymbol{\beta}}(\mathbf{s}^{\prime})$ is used as its edge weight. Then, the initial minimum spanning tree (MST), $\mathcal{T}^{(0)}$, is obtained based on $\mathcal{G}$ and its assigned edge weights. 
      \item  By removing $(k_p^{(0)}-1)$ edges of $\mathcal{T}^{(0)}$, we obtain $k_p^{(0)}$ initial clusters. 
   \end{itemize}
-```{r echo=TRUE, warning=FALSE}
-# Build MST 
-set.seed(43)
-coords <- st_coordinates(st_centroid(map)[,3])
-# create graph
-adjacency_matrix <- sf::st_touches(map) %>% as("matrix")
-graph0 <- graph.adjacency(adjacency_matrix, mode = "undirected", diag = FALSE)
 
-##Initial beta estimates
+We could use random weights to construct spanning tree. 
+```{r warning=FALSE}
+geodata = initial.mst.build(map, method = 'knn', para = 10, nclust = 10)
+plot(geodata$mstgraph.ini)
+```
+To guarantee spatial continuity, we want to use adjacent matrix to build the graph and MST. A better initial weight is also provided.
+```{r echo=TRUE, warning=FALSE}
+seed = 81
+graph0 <- ConstructGraph0(map,method='adjmat', seed = seed)
 ratio = matrix(0,nrow = nt, ncol = ns)
 for(i in 1:ns){ratio[,i] = as.matrix(Y[,i]/population[,i])}
-
-######  Construct an initial MST
-beta.ini= ginv(t(X) %*% X) %*% t(X) %*% eta # p * s
+# prepare initial weights based on observations
+beta.ini= ginv(t(X) %*% X) %*% t(X) %*% ratio # p * s
 beta.ini = t(beta.ini) 
-dim(beta.ini)
 inc.mat=get.edgelist(graph0, names = F)
 weights=sqrt(rowSums((beta.ini[inc.mat[,1],]-beta.ini[inc.mat[,2],])^2))
-E(graph0)$weights=weights
-mstgraph.ini=mst(graph0, weights = weights)
+# Build MST 
 
-V(mstgraph.ini)$vid=1:ns
-rmid=order(E(mstgraph.ini)$weights, decreasing = TRUE)[1:15]
-
-graph_comp=components(delete.edges(mstgraph.ini, rmid))
-membership.ini=graph_comp$membership
-
-membership=membership.ini ##cluster membership
-mstgraph=mstgraph.ini     ## initial MST
-cluster_true 
+geodata = initial.mst.build(map,method='adjmat',nclust = 10, weights = weights, seed = seed)
+geodata$cluster
+cluster_true
+adjustedRandIndex(geodata$cluster,cluster_true)
+table(geodata$cluster,cluster_true)
 ```
-- Initialize model parameters:
- target is list containging response Y and covariate X
+- Initialize other model parameters:
  hyperpar is a parameter contains the penalty of the number of clusters
- init_val includes parameters of initial beta, cluster memebership and spanning tree.
- inla.extra and formula are components of INLA function. inla.extra descrbes the model type (family, normal, poisson, binomial), and potential parameters; 
- formula is for fitting within-cluster model, thus, the response name should be 'Yk'
+ formula is for fitting within-cluster model, thus, the response name should be 'Yk' and the covariate should be named as 'Xk'
 - Run the Fclust-RST method on normal response data:
 ```{r eval=FALSE, message=TRUE, warning=FALSE, include=FALSE}
-# library(RhpcBLASctl)
-# blas_get_num_procs()
-# blas_set_num_threads(6)
+path_res <- file.path(path_proj, "data", "result","normal_gam_exp.rds")
 formula= Yk~ f(Xk, model = "rw1", scale.model = T)
 system.time({
-bsfc(eta, graphdata = list(graph = graph0, mst = mstgraph.ini, cluster = membership.ini), X = time, N = NULL,
+bsfc(eta, graphdata = geodata, X = time, N = NULL,
                 formula, family = "normal", hyperpar = list(c = 0.5),
-                correction = T, niter = 5000, burnin = 2000, thin = 1, path_save = path_res) 
+                correction = T, niter = 500, burnin = 0, thin = 1, path_save = path_res) 
  })
 ```
 If more iterations need to converge, we could use continue_bsfc() 

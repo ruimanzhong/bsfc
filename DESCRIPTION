@@ -20,7 +20,8 @@ Imports:
     igraph,
     sf,
     INLA,
-    SparseM
+    SparseM,
+    cccd
 Suggests: 
     knitr,
     rmarkdown,

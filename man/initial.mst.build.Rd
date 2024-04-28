@@ -4,7 +4,14 @@
 \alias{initial.mst.build}
 \title{Initialize Graph and Compute Minimum Spanning Tree}
 \usage{
-initial.mst.build(map, method = "knn", para = 10, weights = NULL, seed = 1234)
+initial.mst.build(
+  map,
+  method = "knn",
+  para = 10,
+  nclust = 10,
+  weights = NULL,
+  seed = 1234
+)
 }
 \arguments{
 \item{map}{An sf object representing the spatial data, from which coordinates are extracted.}
@@ -16,6 +23,8 @@ Options include 'knn' (k-nearest neighbors), 'knn_geo' (geographical k-nearest n
 
 \item{para}{Numeric value used as a parameter for the graph construction method, such as the number
 of neighbors (k) or a distance threshold (eps), depending on the method.}
+
+\item{nclust}{Integer, the initial number of clusters}
 
 \item{weights}{Optional numeric vector of weights for the edges in the graph. If NULL, random weights are assigned.}
 
@@ -34,7 +43,7 @@ It is designed to handle spatial data for clustering or network analysis, suppor
   library(sf)
   library(igraph)
   # Assuming 'map' is an sf object containing spatial data
-  result <- initial.mst.build(map, method = 'knn', para = 5)
+  result <- initial.mst.build(map, method = 'knn', para = 5, nclust = 5)
   print(result$graph0)
   print(result$mstgraph.ini)
 }
