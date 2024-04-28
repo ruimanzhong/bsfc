@@ -64,7 +64,7 @@ population <- matrix(map$population, nrow = nt, ncol = ns, byrow = T)
 
 We could use random weights to construct spanning tree. 
 ```{r warning=FALSE}
-geodata = initial.mst.build(map, method = 'knn', para = 10, nclust = 10)
+geodata.rd = initial.mst.build(map, method = 'knn', para = 10, nclust = 10)
 plot(geodata$mstgraph.ini)
 ```
 To guarantee spatial continuity, we want to use adjacent matrix to build the graph and MST. A better initial weight is also provided.

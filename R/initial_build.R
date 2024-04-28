@@ -46,7 +46,7 @@ initial.mst.build <- function(map, method = 'knn', para = 10, nclust = 10, weigh
 
  graph_comp <- components(delete.edges(mstgraph.ini, rmid))
  membership.ini <- graph_comp$membership
- return(list(graph0 = graph0, mstgraph.ini = mstgraph.ini, cluster = membership.ini))
+ return(list(graph = graph0, mstgraph.ini = mstgraph.ini, cluster = membership.ini))
 }
 
 #' Construct Initial Graph from Spatial Data
