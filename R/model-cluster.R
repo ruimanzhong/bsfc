@@ -206,7 +206,7 @@ bsfc = function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), X
 
     if (iter %% 10 == 0) {
       cat('Iteration ', iter, ': clusters = ', k, ', births = ', birth_cnt, ', deaths = ',
-          death_cnt, ', changes = ', change_cnt, ', hypers = ', hyper_cnt, 'log_mlike = ', log_mlike,'\n', sep = "")
+          death_cnt, ', changes = ', change_cnt, ', hypers = ', hyper_cnt, ', log_mlike = ', log_mlike,'\n', sep = "")
     }
 
     if (iter > burnin & (iter - burnin) %% thin == 0) {
@@ -280,11 +280,11 @@ bsfc = function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), X
 #'               path_save = "path/to/continue_results/")
 #'}
 #' @export
-continue_bsfc <- function(result, Y, X = NULL, N = NULL,
+continue_bsfc <- function(result, Y, X = NULL, N = NULL, graph,
               formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.5),
               correction = FALSE, niter = 100, burnin = 0, thin = 1, path_save = NULL, ... ){
   n = length(result[["mst"]])
-  bsfc(eta, graphdata = list(graph = NULL, mst = result[["mst"]][[n]], cluster = result$cluster[n,]), X = time, N = NULL,
+  bsfc(eta, graphdata = list(graph = graph, mst = result[["mst"]][[n]], cluster = result$cluster[n,]), X = time, N = NULL,
        formula, family = "normal", hyperpar = list(c = 0.5),
        correction = T, niter = 2000, burnin = 1000, thin = 1, path_save = path_res)
 }

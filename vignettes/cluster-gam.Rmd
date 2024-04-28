@@ -79,11 +79,11 @@ for(i in 1:ns){ratio[,i] = as.matrix(Y[,i]/population[,i])}
 ######  Construct an initial MST
 beta.ini= ginv(t(X) %*% X) %*% t(X) %*% eta # p * s
 beta.ini = t(beta.ini) 
-
+dim(beta.ini)
 inc.mat=get.edgelist(graph0, names = F)
-weights=sqrt(sum(beta.ini[inc.mat[,1]]-beta.ini[inc.mat[,2]])^2)
+weights=sqrt(rowSums((beta.ini[inc.mat[,1],]-beta.ini[inc.mat[,2],])^2))
 E(graph0)$weights=weights
-mstgraph.ini=mst(graph0)
+mstgraph.ini=mst(graph0, weights = weights)
 
 V(mstgraph.ini)$vid=1:ns
 rmid=order(E(mstgraph.ini)$weights, decreasing = TRUE)[1:15]
@@ -102,7 +102,7 @@ cluster_true
  inla.extra and formula are components of INLA function. inla.extra descrbes the model type (family, normal, poisson, binomial), and potential parameters; 
  formula is for fitting within-cluster model, thus, the response name should be 'Yk'
 - Run the Fclust-RST method on normal response data:
-```{r message=TRUE, warning=FALSE, include=FALSE}
+```{r eval=FALSE, message=TRUE, warning=FALSE, include=FALSE}
 # library(RhpcBLASctl)
 # blas_get_num_procs()
 # blas_set_num_threads(6)
@@ -110,22 +110,24 @@ formula= Yk~ f(Xk, model = "rw1", scale.model = T)
 system.time({
 bsfc(eta, graphdata = list(graph = graph0, mst = mstgraph.ini, cluster = membership.ini), X = time, N = NULL,
                 formula, family = "normal", hyperpar = list(c = 0.5),
-                correction = T, niter = 1800, burnin = 1000, thin = 1, path_save = path_res) 
+                correction = T, niter = 5000, burnin = 2000, thin = 1, path_save = path_res) 
  })
 ```
 If more iterations need to converge, we could use continue_bsfc() 
-```{r}
+```{r eval=FALSE, include=FALSE}
 result = readRDS(path_res)
-n = length(result[['mst']])
-continue_bsfc(eta, graphdata = list(graph = graph0, mst = result[["mst"]][[n]], cluster = result$cluster[n,]), X = time, N = NULL,
-                formula, family = "normal", hyperpar = list(c = 0.5),
-                correction = T, niter = 3000, burnin = 1000, thin = 1, path_save = path_res) 
+continue_bsfc(result, eta, X = time, N = NULL, graph = graph0,
+                formula, family = "normal", hyperpar = list(c = 0.1),
+                correction = T, niter = 5000, burnin = 1000, thin = 1, path_save = path_res) 
 ```
 ```{r}
 result = readRDS(path_res)
 clust_res = result$cluster[nrow(result$cluster),]
+cluster_true
+table(cluster_true,clust_res)
+adjustedRandIndex(clust_res, cluster_true)
 p = max(clust_res)
-final_model =  lapply(1:p, log_mlik_each, eta, clust_res, X, NULL, formula, correction = F, detailed = T)
+final_model =  result$model
 
 plotClusterMap(cluster_true = cluster_true,clust_res = as.factor(clust_res), map, file.path(path_im, 'Cluster_map_gam_normal_res.png'))
 
@@ -138,12 +140,37 @@ plotClusterFun(eta,nt,clust_res,final_model,a = 3, b=4, file.path(path_im, 'Clus
     labs(x = "iteration", y = "log marginal likelihood")
 table(cluster_true, result$cluster[nrow(result$cluster),])
 ```
-```{r}
-formula= Yk~ f(Xk, model = "rw1", scale.model = T)
-log_mlike_vec_res = log_mlik_all(eta,result$cluster[800,], time, N = NULL, formula,family ="normal", correction = T)
-log_mlike_res = sum(log_mlike_vec_res)
-  log_mlike_vec = log_mlik_all(eta, as.numeric(cluster_true), time, NULL, formula, "normal", correction = T)
-  log_mlike = sum(log_mlike_vec)
-log_mlike_vec_res
-log_mlike
+If more iterations need to converge, we could use continue_bsfc() 
+```{r eval=FALSE, include=FALSE}
+result = readRDS(path_res)
+formula= Yk~ f(Xk, model = "rw1", scale.model = T) + f(id, model = "iid")
+path_res_con <- file.path(path_proj, "data", "result","bsfc_gam_poisson_con.rds")
+continue_bsfc(result, Y, X = time, N = population, graph = graph0,
+                formula, family = "poisson", hyperpar = list(c = 0.1),
+                correction = T, niter = 1000, burnin =0, thin = 1, path_save = path_res) 
 ```
+
+```{r}
+path_res <- file.path(path_proj, "data", "result","bsfc_gam_poisson.rds")
+result = readRDS(path_res)
+
+clust_res = result$cluster[nrow(result$cluster),]
+cluster_true
+table(cluster_true,clust_res)
+adjustedRandIndex(clust_res, cluster_true)
+p = max(clust_res)
+final_model =  result$model
+
+plotClusterMap(cluster_true = cluster_true,clust_res = as.factor(clust_res), map, file.path(path_im, 'Cluster_map_gam_poisson_res.png'))
+
+plotClusterFun(exp(eta),nt,clust_res,final_model,a = 3, b=4, file.path(path_im, 'Cluster_fun_gam_poisson_res.png'))
+
+
+  data.frame(id = 1:length(result$log_mlike), log_mlike = result$log_mlike) |>
+    ggplot() +
+    geom_line(aes(id, log_mlike)) +
+    labs(x = "iteration", y = "log marginal likelihood")
+table(cluster_true, result$cluster[nrow(result$cluster),])
+```
+
+

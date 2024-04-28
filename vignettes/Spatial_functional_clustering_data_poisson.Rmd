@@ -38,7 +38,7 @@ path_proj <- '~/Documents/project3'
 path_data <- file.path(path_proj, "data")
 path_raw <- file.path(path_data, "raw")
 path_sim <- file.path(path_data, "simulated")
-path_res <- file.path(path_proj, "data", "result","normal.RData")
+path_res <- file.path(path_proj, "data", "result","bsfc_glm_normal.rds")
 path_im <- file.path(path_data,  "image")
 ```
 
@@ -133,19 +133,26 @@ system.time({
 ```{r echo=TRUE, message=FALSE}
 
 #####Load the results of Fclust-RST
-load(file.path(path_res))
-cluster_out_burn = cluster_out[1:10,]
-brazil$cluster_true = cluster_true
-pihat <- salso::psm(cluster_out_burn)
-clust_idx=which.min(salso::binder(cluster_out_burn, pihat))
-clust_res=cluster_out_burn[clust_idx,]
-brazil$cluster_true = cluster_true
+result = readRDS("~/Documents/project3/data/result/bsfc-glm-normal.rds")
+cluster <- result$cluster[1500:2000,]
+pihat <- salso::psm(cluster)
+clust_idx=which.min(salso::binder(cluster, pihat))
+clust_res=cluster[clust_idx,]
 ###Obtain the adjusted Rand index with the true partition
 adjustedRandIndex(clust_res, cluster_true)
-n.sample=(MCMC-BURNIN)/THIN ###Number of posterior samples
-png(file.path(path_im,'Cluster Procedure AR.png'))
-print(fields::image.plot(cluster_out, main="Cluster Procedure", axes=TRUE, xlab = 'Iterations', ylab = 'Memembership'))
-dev.off()
+
+p = max(clust_res)
+final_model =  lapply(1:p,log_mlik_each, eta, clust_res, X, N = NULL, formula, family = "normal", correction = FALSE, detailed = T)
+
+plotClusterMap(cluster_true = cluster_true,clust_res = as.factor(clust_res), map, file.path(path_im, 'Cluster_map_glm_normal_res.png'))
+
+plotClusterFun(eta,nt,clust_res,final_model,a = 3, b=4, file.path(path_im, 'Cluster_fun_glm_normal_res.png'))
+
+
+  data.frame(id = 1:length(result$log_mlike), log_mlike = result$log_mlike) |>
+    ggplot() +
+    geom_line(aes(id, log_mlike)) +
+    labs(x = "iteration", y = "log marginal likelihood")
 ```
 
 - Plot the estimated curve (in red) versus the observed ones (in grey) for each cluster:

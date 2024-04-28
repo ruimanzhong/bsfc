@@ -9,6 +9,7 @@ continue_bsfc(
   Y,
   X = NULL,
   N = NULL,
+  graph,
   formula = Yk ~ 1 + Xk,
   family = "normal",
   hyperpar = list(c = 0.5),

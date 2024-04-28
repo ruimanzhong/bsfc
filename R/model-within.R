@@ -70,6 +70,40 @@ log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1
   }
 }
 
+#' Calculate Log Marginal Likelihood for All Clusters
+#'
+#' This function computes the log marginal likelihood for each cluster specified in the membership vector.
+#' It applies a specified model to each cluster to calculate the likelihood.
+#'
+#' @param Y Numeric matrix or data frame of observations, where rows typically represent observational units
+#'        and columns represent different variables.
+#' @param membership Integer vector indicating the cluster membership for each observation.
+#' @param X Optional numeric matrix or data frame of covariates used in the model (if applicable).
+#' @param N Optional numeric vector indicating the number of trials or cases, relevant for
+#'        distributions like binomial (default is NULL).
+#' @param formula An object of class \code{\link[stats]{formula}} specifying the model to be used in INLA.
+#'        Default is `Yk ~ 1 + Xk`, which can be adjusted based on the model requirements.
+#' @param family Character string specifying the family of distributions to use for the model.
+#'        Defaults to "normal". Other possible values include "binomial", "poisson", etc.
+#' @param correction Logical indicating whether a correction for dispersion or other factors
+#'        should be applied. Defaults to FALSE.
+#' @param ... Additional arguments passed to the underlying `log_mlik_each` function.
+#'
+#' @details This function iterates over the unique clusters defined in the `membership` vector and
+#'          calculates the log marginal likelihood for each cluster using the `log_mlik_each` function.
+#'          The function is flexible and allows for different families of distributions and model specifications
+#'          by adjusting the formula, family, and other parameters.
+#'
+#' @return A numeric vector containing the log marginal likelihood for each cluster.
+#'
+#' @examples
+#' \dontrun{
+#'   # Assume Y is a matrix of observations, membership defines cluster memberships
+#'   # and X is a matrix of covariates:
+#'   log_mlikelihoods <- log_mlik_all(Y, membership, X = X, family = "poisson")
+#' }
+#'
+#' @export
 log_mlik_all <- function(Y, membership, X = NULL, N = NULL, formula = Yk ~ 1 + Xk,
                          family = "normal", correction = FALSE, ...) {
 
