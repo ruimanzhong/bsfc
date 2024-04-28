@@ -1,4 +1,4 @@
-# bsfc: Spatial Functional Clustering
+# bsfc: Spatial Functional Data Clustering
 
 `bsfc` is an R package designed for clustering spatial functional data. This package facilitates the analysis of data where observations are functions or curves that are correlated across spatial locations. It extends ideas from the research paper "BAYESIAN CLUSTERING OF SPATIAL FUNCTIONAL DATA WITH APPLICATION TO A HUMAN MOBILITY STUDY DURING COVID-19" to the exponential family using Integrated Nested Laplace Approximations (INLA).
 
