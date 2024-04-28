@@ -94,7 +94,7 @@ table(geodata$cluster,cluster_true)
 path_res <- file.path(path_proj, "data", "result","normal_gam_exp.rds")
 formula= Yk~ f(Xk, model = "rw1", scale.model = T)
 system.time({
-bsfc(eta, graphdata = geodata, X = time, N = NULL,
+bsfc(eta, graphdata = geodata.rd, X = time, N = NULL,
                 formula, family = "normal", hyperpar = list(c = 0.5),
                 correction = T, niter = 500, burnin = 0, thin = 1, path_save = path_res) 
  })
@@ -102,9 +102,10 @@ bsfc(eta, graphdata = geodata, X = time, N = NULL,
 If more iterations need to converge, we could use continue_bsfc() 
 ```{r eval=FALSE, include=FALSE}
 result = readRDS(path_res)
+path_res_con <- file.path(path_proj, "data", "result","normal_gam_exp_con.rds")
 continue_bsfc(result, eta, X = time, N = NULL, graph = graph0,
                 formula, family = "normal", hyperpar = list(c = 0.1),
-                correction = T, niter = 5000, burnin = 1000, thin = 1, path_save = path_res) 
+                correction = T, niter = 1000, burnin = 0, thin = 1, path_save = path_res_con) 
 ```
 ```{r}
 result = readRDS(path_res)

@@ -4,9 +4,9 @@ Version: 0.0.0.95
 Authors@R: c(
     person("Ruiman", "Zhong", ,"ruiman.zhong@kaust.edu.sa", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-4681-9199")),
-    person("Erick", "A. Chacón Montalván", ,"erick.chaconmontalvan@kaust.edu.sa", role = c("aut", "cre"),
+    person("Erick", "A. Chacón Montalván", ,"erick.chaconmontalvan@kaust.edu.sa", role = c("aut"),
            comment = c(ORCID = "0000-0001-8068-1034")),
-    person("Paula", "Moraga", ,"paula.moraga@kaust.edu.sa", role = c("aut", "cre"),
+    person("Paula", "Moraga", ,"paula.moraga@kaust.edu.sa", role = c("aut"),
            comment = c(ORCID = "0000-0001-5266-0201"))
            )
 Description: The package implements a Bayesian spatial functional data clustering alogrithm based on spanning tree and RJ-MCMC.
