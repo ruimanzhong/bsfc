@@ -162,8 +162,11 @@ get_structure_matrix = function (model, formula) {
 
   # select effect that requires correction
   fs = as.list(attr(terms(formula), "variables"))[c(-1,-2)]
-  fs_rw = grepl("model = \"rw", sapply(fs, deparse))
-  fs_vars = sapply(fs, all.vars)[fs_rw]
+
+  pattern <- "f\\((\\w+)(?=[^,]*?, (?!model = \"iid\"))"
+
+  results = stringr::str_extract_all(sapply(fs, deparse), pattern)
+  fs_vars<- sapply(unlist(results), function(x) gsub("f\\(|\\)", "", x))
 
   # provide structure matrix for selected effects
   out = list()
