@@ -30,19 +30,23 @@
 #' @export
 initial.mst.build <- function(map, method = 'knn', para = 10, nclust = 10, weights = NULL, seed = 1234){
   set.seed(seed)
-  coords <- st_coordinates(st_centroid(map)[,3])
-  ns = dim(coords)[1]
-  graph0 = ConstructGraph0(map, method = method, para = para)
-  if(is.null(weights) & is.null(graph0$weight)) { weight <- runif(length(E(graph0)), 0, 1)
-  E(graph0)$weight = weight}
-  if(!is.null(weights)){E(graph0)$weight = weights}
-  mstgraph.ini = mst(graph0)
-  V(mstgraph.ini)$vid=1:ns
-  rmid=order(E(mstgraph.ini)$weight, decreasing = TRUE)[1:(nclust-1)]
+ coords <- st_coordinates(st_centroid(map)[, 3])
+ ns <- dim(coords)[1]
+ graph0 <- ConstructGraph0(map, method = method, para = para)
+ if (is.null(weights) & is.null(graph0$weight)) {
+   weight <- runif(length(E(graph0)), 0, 1)
+   E(graph0)$weight <- weight
+ }
+ if (!is.null(weights)) {
+   E(graph0)$weight <- weights
+ }
+ mstgraph.ini <- mst(graph0)
+ V(mstgraph.ini)$vid <- 1:ns
+ rmid <- order(E(mstgraph.ini)$weight, decreasing = TRUE)[1:(nclust - 1)]
 
-  graph_comp=components(delete.edges(mstgraph.ini, rmid))
-  membership.ini=graph_comp$membership
-  return(list(graph0 = graph0, mstgraph.ini = mstgraph.ini, cluster = membership.ini))
+ graph_comp <- components(delete.edges(mstgraph.ini, rmid))
+ membership.ini <- graph_comp$membership
+ return(list(graph0 = graph0, mstgraph.ini = mstgraph.ini, cluster = membership.ini))
 }
 
 #' Construct Initial Graph from Spatial Data
@@ -70,50 +74,45 @@ initial.mst.build <- function(map, method = 'knn', para = 10, nclust = 10, weigh
 #'
 ConstructGraph0=function(map,method='knn',para = 10, seed = 1234){
   set.seed(seed)
-  coords <- st_coordinates(st_centroid(map)[,3])
-  if(method=='knn')
-  {
-    k=para
-    graph0=nng(coords,k=k);
-    edgelist=ends(graph0,E(graph0))
-    weight= sqrt(apply((coords[edgelist[,1],]-coords[edgelist[,2],])^2,1,sum));
-    E(graph0)$weight=weight;}
+ coords <- st_coordinates(st_centroid(map)[, 3])
+ if (method == "knn") {
+   k <- para
+   graph0 <- nng(coords, k = k)
+   edgelist <- ends(graph0, E(graph0))
+   weight <- sqrt(apply((coords[edgelist[, 1], ] - coords[edgelist[, 2], ])^2, 1, sum))
+   E(graph0)$weight <- weight
+ }
 
 
-  if(method=='knn_geo')
-  {
-    k=para
-    graph0=nng(coords,k=k);
-    edgelist=ends(graph0,E(graph0))
-    weight= rdist.earth(coords[edgelist[,1],], coords[edgelist[,2],], miles=FALSE);
-    E(graph0)$weight=weight;}
+ if (method == "knn_geo") {
+   k <- para
+   graph0 <- nng(coords, k = k)
+   edgelist <- ends(graph0, E(graph0))
+   weight <- rdist.earth(coords[edgelist[, 1], ], coords[edgelist[, 2], ], miles = FALSE)
+   E(graph0)$weight <- weight
+ }
 
-  if(method=='rnn')
-  {
-    eps=para
-    adj=rdist(coords)
-    adj[adj>eps]=0;
-    graph0=graph_from_adjacency_matrix(adj,mode='upper',weighted=TRUE)
+ if (method == "rnn") {
+   eps <- para
+   adj <- rdist(coords)
+   adj[adj > eps] <- 0
+   graph0 <- graph_from_adjacency_matrix(adj, mode = "upper", weighted = TRUE)
+ }
 
-  }
+ if (method == "rnn_geo") {
+   eps <- para
+   adj <- rdist.earth(coords, miles = FALSE)
+   adj[adj > eps] <- 0
+   graph0 <- graph_from_adjacency_matrix(adj, mode = "upper", weighted = TRUE)
+ }
 
-  if(method=='rnn_geo')
-  {
-    eps=para
-    adj=rdist.earth(coords, miles=FALSE)
-    adj[adj>eps]=0;
-    graph0=graph_from_adjacency_matrix(adj,mode='upper',weighted=TRUE)
-
-  }
-
-  if(method=='deltri'){
-    threshold=para;
-    graph0=dentrigraph(coords,threshold=threshold)
-
-  }
-  if(method == 'adjmat'){
-    adjmat <- sf::st_touches(map) %>% as("matrix")
-    graph0 <- graph.adjacency(adjmat, mode = "undirected", diag = FALSE)
-  }
+ if (method == "deltri") {
+   threshold <- para
+   graph0 <- dentrigraph(coords, threshold = threshold)
+ }
+ if (method == "adjmat") {
+   adjmat <- sf::st_touches(map) %>% as("matrix")
+   graph0 <- graph.adjacency(adjmat, mode = "undirected", diag = FALSE)
+ }
   return(graph0)
 }

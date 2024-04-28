@@ -21,222 +21,244 @@
 #' @examples
 #' # Example setup (note: actual data and parameters need to be defined)
 #' \dontrun{
-#' data <- list(Y = matrix(rnorm(100), ncol=10), X = matrix(rnorm(100), ncol=10))
+#' data <- list(Y = matrix(rnorm(100), ncol = 10), X = matrix(rnorm(100), ncol = 10))
 #' formula <- Y ~ X1 + X2
 #' inla.extra <- list(correction = TRUE)
-#' graph <- matrix(sample(0:1, 100, replace=TRUE), ncol=10)
-#' init_val <- list(trees = graph, beta = runif(10), cluster = sample(1:5, 10, replace=TRUE))
+#' graph <- matrix(sample(0:1, 100, replace = TRUE), ncol = 10)
+#' init_val <- list(trees = graph, beta = runif(10), cluster = sample(1:5, 10, replace = TRUE))
 #' hyperpar <- list(c = 0.5)
 #' path_save <- "path/to/save/results/"
 #'
-#' bsfc(data,family, formula, graph, init_val, hyperpar, MCMC, burnin, THIN, path_save, seed = 1234)
-#'}
+#' bsfc(data, family, formula, graph, init_val, hyperpar, MCMC, burnin, THIN, path_save, seed = 1234)
+#' }
 #' @export
-bsfc = function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), X = NULL, N = NULL,
-                formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.5),
-                correction = NULL, niter = 100, burnin = 0, thin = 1, path_save = NULL, ...) {
-
+bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), X = NULL, N = NULL,
+                 formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.5),
+                 correction = NULL, niter = 100, burnin = 0, thin = 1, path_save = NULL, ...) {
   ## Setup
 
   # apply correction if rw effect is used
   if (is.null(correction)) {
-    fs = as.list(attr(terms(formula), "variables"))[c(-1,-2)]
-    fs = grepl("model = \"rw", sapply(fs, deparse))
-    correction = any(fs)
+    fs <- as.list(attr(terms(formula), "variables"))[c(-1, -2)]
+    fs <- grepl("model = \"rw", sapply(fs, deparse))
+    correction <- any(fs)
   }
 
   # dimensions
-  ns = nrow(Y)
+  ns <- nrow(Y)
 
   # initial values
-  graph = graphdata[['graph']]
-  mstgraph = graphdata[['mst']]
-  cluster = graphdata[['cluster']]
-  k = max(cluster)
+  graph <- graphdata[["graph"]]
+  mstgraph <- graphdata[["mst"]]
+  cluster <- graphdata[["cluster"]]
+  k <- max(cluster)
 
   # hyperparameters
-  c = hyperpar$c
+  c <- hyperpar$c
 
   # movement counts
-  hyper_cnt = 0; birth_cnt = 0; death_cnt = 0; change_cnt = 0
+  hyper_cnt <- 0
+  birth_cnt <- 0
+  death_cnt <- 0
+  change_cnt <- 0
 
   ## Initialize
 
   # initialize log likelihood vector
-  log_mlike_vec = log_mlik_all(Y, cluster, X, N, formula, family, correction)
-  log_mlike = sum(log_mlike_vec)
+  log_mlike_vec <- log_mlik_all(Y, cluster, X, N, formula, family, correction)
+  log_mlike <- sum(log_mlike_vec)
 
   # whether an edge in graph is within a cluster or bewteen two clusters
   # n*p matrix
-  edge_status = getEdgeStatus(cluster, mstgraph)
+  edge_status <- getEdgeStatus(cluster, mstgraph)
 
   ## Prepare output
 
-  cluster_out = array(0, dim = c((niter-burnin)/thin, ns))
-  mst_out = list()
-  log_mlike_out = numeric((niter-burnin)/thin)
+  cluster_out <- array(0, dim = c((niter - burnin) / thin, ns))
+  mst_out <- list()
+  log_mlike_out <- numeric((niter - burnin) / thin)
 
   ## MCMC sampling
 
-  for(iter in 1:niter) {
+  for (iter in 1:niter) {
+    rhy <- 0.05
+    if (k == 1) {
+      rb <- 0.95
+      rd <- 0
+      rc <- 0
+    } else if (k == ns) {
+      rb <- 0
+      rd <- 0.85
+      rc <- 0.1
+    } else {
+      rb <- 0.425
+      rd <- 0.425
+      rc <- 0.1
+    }
 
-    rhy = 0.05
-    if(k == 1) {rb = 0.95; rd = 0; rc = 0
-    } else if(k == ns) {rb = 0; rd = 0.85; rc = 0.1
-    } else {rb = 0.425; rd = 0.425; rc = 0.1}
+    move <- sample(4, 1, prob = c(rb, rd, rc, rhy))
 
-    move = sample(4, 1, prob = c(rb, rd, rc, rhy))
-
-    if(move == 1) { ## Birth move
+    if (move == 1) { ## Birth move
 
       ## Propose a split movement c1 -> (c1, c2)
-      split_res = splitCluster(mstgraph, k, cluster)
-      split_res$k = k+1
-      membership_new = split_res$cluster
+      split_res <- splitCluster(mstgraph, k, cluster)
+      split_res$k <- k + 1
+      membership_new <- split_res$cluster
 
       ## Compute log-ratios for probability of acceptance
 
       # movement ratio
-      if(k == ns-1) {
-        rd_new = 0.85
-      } else {rd_new = 0.425}
+      if (k == ns - 1) {
+        rd_new <- 0.85
+      } else {
+        rd_new <- 0.425
+      }
       # if(k_m == n-1) {
       #   rd_new = 0.6
       # } else {rd_new = 0.3}
-      log_P = log(rd_new) - log(rb)
+      log_P <- log(rd_new) - log(rb)
 
       # prior ratio
-      log_A = log(1-c)
+      log_A <- log(1 - c)
 
       # marginal likelihood ratio
-      log_L_new = log_mlik_ratio('split', log_mlike_vec, split_res, Y, X, N, formula, family, correction, FALSE, ...)
-      log_L = log_L_new$ratio
+      log_L_new <- log_mlik_ratio("split", log_mlike_vec, split_res, Y, X, N, formula, family, correction, FALSE, ...)
+      log_L <- log_L_new$ratio
 
       ## Accept with probability
-      acc_prob = min(0, log_A + log_P + log_L)
-      acc_prob = exp(acc_prob)
-      if(runif(1) < acc_prob){
-        cluster = membership_new
-        k = k + 1
+      acc_prob <- min(0, log_A + log_P + log_L)
+      acc_prob <- exp(acc_prob)
+      if (runif(1) < acc_prob) {
+        cluster <- membership_new
+        k <- k + 1
 
-        log_mlike_vec = log_L_new$log_mlike_vec
-        log_mlike = sum(log_mlike_vec)
+        log_mlike_vec <- log_L_new$log_mlike_vec
+        log_mlike <- sum(log_mlike_vec)
 
-        edge_status = getEdgeStatus(cluster, mstgraph)
-        birth_cnt = birth_cnt + 1
+        edge_status <- getEdgeStatus(cluster, mstgraph)
+        birth_cnt <- birth_cnt + 1
       }
     }
 
-    if(move == 2) { ## Death move
+    if (move == 2) { ## Death move
 
       ## Propose a merge movement (c1, c2) -> c2
-      merge_res = mergeCluster(mstgraph, edge_status, cluster)
-      membership_new = merge_res$cluster
-      cid_rm = merge_res$cluster_rm
+      merge_res <- mergeCluster(mstgraph, edge_status, cluster)
+      membership_new <- merge_res$cluster
+      cid_rm <- merge_res$cluster_rm
 
       ## Compute log-ratios for probability of acceptance
 
       # movement ratio
-      if(k == 2) {rb_new = 0.85
-      }else {rb_new = 0.425}
-      log_P = log(rb_new) - log(rd)
+      if (k == 2) {
+        rb_new <- 0.85
+      } else {
+        rb_new <- 0.425
+      }
+      log_P <- log(rb_new) - log(rd)
 
       # prior ratio
-      log_A = -log(1-c)
+      log_A <- -log(1 - c)
 
       # marginal likelihood ratio
-      log_L_new = log_mlik_ratio('merge', log_mlike_vec, merge_res, Y, X, N, formula, family, correction, FALSE, ...)
-      log_L = log_L_new$ratio
+      log_L_new <- log_mlik_ratio("merge", log_mlike_vec, merge_res, Y, X, N, formula, family, correction, FALSE, ...)
+      log_L <- log_L_new$ratio
 
       ## Accept with probability
-      acc_prob = min(0, log_A + log_P + log_L)
-      acc_prob = exp(acc_prob)
-      if(runif(1) < acc_prob){
-        cluster = membership_new
-        k = k - 1
+      acc_prob <- min(0, log_A + log_P + log_L)
+      acc_prob <- exp(acc_prob)
+      if (runif(1) < acc_prob) {
+        cluster <- membership_new
+        k <- k - 1
 
-        log_mlike_vec = log_L_new$log_mlike_vec
-        log_mlike = sum(log_mlike_vec);
+        log_mlike_vec <- log_L_new$log_mlike_vec
+        log_mlike <- sum(log_mlike_vec)
 
-        edge_status = getEdgeStatus(cluster, mstgraph)
-        death_cnt=death_cnt+1
+        edge_status <- getEdgeStatus(cluster, mstgraph)
+        death_cnt <- death_cnt + 1
       }
     }
 
 
-    if(move == 3) { ## change move
+    if (move == 3) { ## change move
 
       ## First: Propose a merge movement (c1, c2) -> c2
-      merge_res = mergeCluster(mstgraph, edge_status, cluster)
-      membership_new = merge_res$cluster
-      cid_rm = merge_res$cluster_rm
-      k = k-1
+      merge_res <- mergeCluster(mstgraph, edge_status, cluster)
+      membership_new <- merge_res$cluster
+      cid_rm <- merge_res$cluster_rm
+      k <- k - 1
 
-      log_L_new_merge = log_mlik_ratio('merge', log_mlike_vec, merge_res, Y, X, N, formula, family, correction, FALSE, ...)
+      log_L_new_merge <- log_mlik_ratio("merge", log_mlike_vec, merge_res, Y, X, N, formula, family, correction, FALSE, ...)
 
       ## Second: Propose a split movement c1 -> (c1, c2)
-      split_res = splitCluster(mstgraph, k, merge_res$cluster);
-      split_res$k = k+1
-      membership_new = split_res$cluster
-      k = k+1
+      split_res <- splitCluster(mstgraph, k, merge_res$cluster)
+      split_res$k <- k + 1
+      membership_new <- split_res$cluster
+      k <- k + 1
 
-      log_L_new = log_mlik_ratio('split', log_L_new_merge$log_mlike_vec, split_res, Y, X, N,
-        formula, family, correction, FALSE, ...)
-      log_L = log_L_new$ratio + log_L_new_merge$ratio
+      log_L_new <- log_mlik_ratio(
+        "split", log_L_new_merge$log_mlike_vec, split_res, Y, X, N,
+        formula, family, correction, FALSE, ...
+      )
+      log_L <- log_L_new$ratio + log_L_new_merge$ratio
 
       ## Accept with probability
-      acc_prob = min(0, log_L)
-      acc_prob = exp(acc_prob)
-      if(runif(1) < acc_prob){
-        cluster = membership_new
+      acc_prob <- min(0, log_L)
+      acc_prob <- exp(acc_prob)
+      if (runif(1) < acc_prob) {
+        cluster <- membership_new
 
-        log_mlike_vec = log_L_new$log_mlike_vec
-        log_mlike = sum(log_mlike_vec)
+        log_mlike_vec <- log_L_new$log_mlike_vec
+        log_mlike <- sum(log_mlike_vec)
 
-        edge_status = getEdgeStatus(cluster, mstgraph)
-        change_cnt=change_cnt+1
+        edge_status <- getEdgeStatus(cluster, mstgraph)
+        change_cnt <- change_cnt + 1
       }
     }
 
-    if(move == 4) { ## Hyper move
+    if (move == 4) { ## Hyper move
 
       ## Update MST
-      edge_status_G = getEdgeStatus(cluster, graph)
-      mstgraph = proposeMST(graph, edge_status_G)
-      V(mstgraph)$vid = 1:ns
-      edge_status = getEdgeStatus(cluster, mstgraph)
+      edge_status_G <- getEdgeStatus(cluster, graph)
+      mstgraph <- proposeMST(graph, edge_status_G)
+      V(mstgraph)$vid <- 1:ns
+      edge_status <- getEdgeStatus(cluster, mstgraph)
 
-      hyper_cnt = hyper_cnt + 1
+      hyper_cnt <- hyper_cnt + 1
     }
 
     ## Store estimates
 
     if (iter %% 10 == 0) {
-      cat('Iteration ', iter, ': clusters = ', k, ', births = ', birth_cnt, ', deaths = ',
-          death_cnt, ', changes = ', change_cnt, ', hypers = ', hyper_cnt, ', log_mlike = ', log_mlike,'\n', sep = "")
+      cat("Iteration ", iter, ": clusters = ", k, ", births = ", birth_cnt, ", deaths = ",
+        death_cnt, ", changes = ", change_cnt, ", hypers = ", hyper_cnt, ", log_mlike = ", log_mlike, "\n",
+        sep = ""
+      )
     }
 
     if (iter > burnin & (iter - burnin) %% thin == 0) {
-      mst_out[[(iter-burnin)/thin]] = mstgraph
-      cluster_out[(iter-burnin)/thin, ] = cluster
-      log_mlike_out[(iter-burnin)/thin] = log_mlike
+      mst_out[[(iter - burnin) / thin]] <- mstgraph
+      cluster_out[(iter - burnin) / thin, ] <- cluster
+      log_mlike_out[(iter - burnin) / thin] <- log_mlike
     }
 
     if (iter %% 100 == 0) {
       if (!is.null(path_save)) {
-        saveRDS(list(cluster = cluster_out, log_mlike = log_mlike_out, mst = mst_out,
-          counts = c(births = birth_cnt, deaths = death_cnt, changes = change_cnt, hypers = hyper_cnt)),
+        saveRDS(
+          list(
+            cluster = cluster_out, log_mlike = log_mlike_out, mst = mst_out,
+            counts = c(births = birth_cnt, deaths = death_cnt, changes = change_cnt, hypers = hyper_cnt)
+          ),
           file = path_save
         )
       }
     }
-
   }
 
-  p = max(cluster)
-  final_model =  lapply(1:p, log_mlik_each, Y, cluster, X, N, formula, family, correction = F, detailed = T, ...)
+  p <- max(cluster)
+  final_model <- lapply(1:p, log_mlik_each, Y, cluster, X, N, formula, family, correction = F, detailed = T, ...)
   # Final result
-  output = list(
+  output <- list(
     cluster = cluster_out, log_mlike = log_mlike_out, mst = mst_out,
     counts = c(births = birth_cnt, deaths = death_cnt, changes = change_cnt, hypers = hyper_cnt),
     model = final_model
@@ -281,17 +303,21 @@ bsfc = function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), X
 #' @examples
 #' # Assuming `result` is already obtained from a previous bsfc run:
 #' \dontrun{
-#' continue_bsfc(result, Y = data$response, X = data$covariates, N = data$trials,
-#'               formula = Yk ~  1 + Xk, family = "normal", hyperpar = list(c = 0.1),
-#'               correction = TRUE, niter = 500, burnin = 50, thin = 5,
-#'               path_save = "path/to/continue_results/")
-#'}
+#' continue_bsfc(result,
+#'   Y = data$response, X = data$covariates, N = data$trials,
+#'   formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.1),
+#'   correction = TRUE, niter = 500, burnin = 50, thin = 5,
+#'   path_save = "path/to/continue_results/"
+#' )
+#' }
 #' @export
 continue_bsfc <- function(result, Y, X = NULL, N = NULL, graph,
-              formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.5),
-              correction = FALSE, niter = 100, burnin = 0, thin = 1, path_save = NULL, ... ){
-  n = length(result[["mst"]])
-  bsfc(eta, graphdata = list(graph = graph, mst = result[["mst"]][[n]], cluster = result$cluster[n,]), X = time, N = NULL,
-       formula, family = "normal", hyperpar = list(c = 0.5),
-       correction = T, niter = 2000, burnin = 1000, thin = 1, path_save = path_res)
+                          formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.5),
+                          correction = FALSE, niter = 100, burnin = 0, thin = 1, path_save = NULL, ...) {
+  n <- length(result[["mst"]])
+  bsfc(eta,
+    graphdata = list(graph = graph, mst = result[["mst"]][[n]], cluster = result$cluster[n, ]), X = time, N = NULL,
+    formula, family = "normal", hyperpar = list(c = 0.5),
+    correction = T, niter = 2000, burnin = 1000, thin = 1, path_save = path_res
+  )
 }

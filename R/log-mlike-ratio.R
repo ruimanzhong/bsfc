@@ -21,11 +21,11 @@
 #'
 #' @return A list containing the updated log likelihood vector and the log likelihood ratio (`llratio`).
 #' @export
-log_mlik_ratio <- function(move, log_mlike_vec, proposed_move, Y, X = NULL, N = NULL,
-    formula = Yk ~ 1 + Xk, family = "normal", correction = FALSE, detailed = FALSE, ...){
-
+log_mlik_ratio <- function(
+    move, log_mlike_vec, proposed_move, Y, X = NULL, N = NULL,
+    formula = Yk ~ 1 + Xk, family = "normal", correction = FALSE, detailed = FALSE, ...) {
   # update local marginal likelihoods for split move
-  if(move == 'split'){
+  if (move == "split") {
     log_like_vec_new <- log_mlike_vec
     M1 <- log_mlik_each(proposed_move$clust_old, Y, proposed_move$cluster, X, N, formula, family, correction, detailed, ...)
     M2 <- log_mlik_each(proposed_move$k, Y, proposed_move$cluster, X, N, formula, family, correction, detailed, ...)
@@ -35,11 +35,11 @@ log_mlik_ratio <- function(move, log_mlike_vec, proposed_move, Y, X = NULL, N = 
   }
 
   # update local margina likelihoods for merge move
-  if(move == 'merge'){
+  if (move == "merge") {
     log_like_vec_new <- log_mlike_vec[-proposed_move$cluster_rm]
     M1 <- log_mlik_each(proposed_move$cluster_newid, Y, proposed_move$cluster, X, N, formula, family, correction, detailed, ...)
     log_like_vec_new[proposed_move$cluster_newid] <- M1
-    llratio <-  M1 - sum(log_mlike_vec[c(proposed_move$cluster_rm, proposed_move$cluster_newid)])
+    llratio <- M1 - sum(log_mlike_vec[c(proposed_move$cluster_rm, proposed_move$cluster_newid)])
   }
 
   return(list(ratio = llratio, log_mlike_vec = log_like_vec_new))

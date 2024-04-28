@@ -27,35 +27,42 @@
 #' # clust_res contains cluster assignments, and final_model is a list of model summaries:
 #' \dontrun{
 #' plotClusterFun(Y, 50, cluster_results, models, "path/to/save/cluster_plot.png")
-#'}
+#' }
 #' @export
-plotClusterFun <- function(Y, nt, clust_res, final_model,a,b, filename){
+plotClusterFun <- function(Y, nt, clust_res, final_model, a, b, filename) {
   time <- 1:nt
-  p = max(clust_res)
-  col_n=gray.colors(80, alpha=0.5)
-  ymin = min(Y); ymax = max(Y)
-  par(mfrow = c(a,b))
-  time = seq(0,1, length.out = nt)
-  for(k in 1:p){
-    IND=which(clust_res==k)
-    plot(time, Y[,IND[1]], "l", col=col_n[40], xlab="t", ylab="f(t)",
-         main=sprintf("Cluster %d", k), ylim=c(ymin, ymax))
+  p <- max(clust_res)
+  col_n <- gray.colors(80, alpha = 0.5)
+  ymin <- min(Y)
+  ymax <- max(Y)
+  par(mfrow = c(a, b))
+  time <- seq(0, 1, length.out = nt)
+  for (k in 1:p) {
+    IND <- which(clust_res == k)
+    plot(time, Y[, IND[1]], "l",
+      col = col_n[40], xlab = "t", ylab = "f(t)",
+      main = sprintf("Cluster %d", k), ylim = c(ymin, ymax)
+    )
     m <- t(matrix(final_model[[k]]$summary.fitted.values$mean, nrow = nt, byrow = FALSE))
-    for(i in 2:length(IND))
-      lines(time, Y[,IND[i]], col=col_n[40])
-    lines(time, colMeans(m), col="red")
+    for (i in 2:length(IND)) {
+      lines(time, Y[, IND[i]], col = col_n[40])
+    }
+    lines(time, colMeans(m), col = "red")
   }
   png(width = 960, height = 480, filename)
-  par(mfrow = c(3,p/3))
-  time = seq(0,1, length.out = nt)
-  for(k in 1:p){
-    IND=which(clust_res==k)
-    plot(time, Y[,IND[1]], "l", col=col_n[40], xlab="t", ylab="f(t)",
-         main=sprintf("Cluster %d", k), ylim=c(ymin, ymax))
+  par(mfrow = c(3, p / 3))
+  time <- seq(0, 1, length.out = nt)
+  for (k in 1:p) {
+    IND <- which(clust_res == k)
+    plot(time, Y[, IND[1]], "l",
+      col = col_n[40], xlab = "t", ylab = "f(t)",
+      main = sprintf("Cluster %d", k), ylim = c(ymin, ymax)
+    )
     m <- t(matrix(final_model[[k]]$summary.fitted.values$mean, nrow = nt, byrow = FALSE))
-    for(i in 2:length(IND))
-      lines(time, Y[,IND[i]], col=col_n[40])
-    lines(time, colMeans(m), col="red")
+    for (i in 2:length(IND)) {
+      lines(time, Y[, IND[i]], col = col_n[40])
+    }
+    lines(time, colMeans(m), col = "red")
   }
   dev.off()
 }
@@ -87,22 +94,22 @@ plotClusterFun <- function(Y, nt, clust_res, final_model,a,b, filename){
 #' # Assuming `clust_res`, `cluster_true` are available and `map` is an sf object:
 #' \dontrun{
 #' plotClusterMap(clust_res, cluster_true, map, "path/to/save/cluster_maps.png")
-#'}
+#' }
 #' @export
-plotClusterMap <- function(clust_res,cluster_true, map, filename){
- p1 =  ggplot(map) +
+plotClusterMap <- function(clust_res, cluster_true, map, filename) {
+  p1 <- ggplot(map) +
     geom_sf(aes(fill = cluster_true)) +
     theme_bw() +
     labs(title = "True clusters", fill = "True cluster")
- p2 =  ggplot(map) +
-   geom_sf(aes(fill = clust_res)) +
-   theme_bw() +
-   labs(title = "Estimated clusters", fill = "Estimated Cluster")
-p =  ggpubr::ggarrange(p1,p2,ncol = 2)
-png(width = 960, height = 480, filename)
-print(p)
-dev.off()
-print(p)
+  p2 <- ggplot(map) +
+    geom_sf(aes(fill = clust_res)) +
+    theme_bw() +
+    labs(title = "Estimated clusters", fill = "Estimated Cluster")
+  p <- ggpubr::ggarrange(p1, p2, ncol = 2)
+  png(width = 960, height = 480, filename)
+  print(p)
+  dev.off()
+  print(p)
 }
 
 #' Plot Clustering Progress Over Iterations
@@ -127,13 +134,13 @@ print(p)
 #' # Assuming clust_res is a matrix where rows are iterations and columns are memberships:
 #' \dontrun{
 #' plotClusterIter(clust_res, "path/to/save/cluster_iterations.png")
-#'}
+#' }
 #' @export
-plotClusterIter <- function(clust_res, filename){
+plotClusterIter <- function(clust_res, filename) {
   png(filename)
-  print(fields::image.plot(t(clust_res), main="Cluster Procedure", axes=TRUE, xlab = 'Memembership', ylab = 'Iterations'))
+  print(fields::image.plot(t(clust_res), main = "Cluster Procedure", axes = TRUE, xlab = "Memembership", ylab = "Iterations"))
   dev.off()
-  print(fields::image.plot(t(clust_res), main="Cluster Procedure", axes=TRUE, xlab = 'Memembership', ylab = 'Iterations'))
+  print(fields::image.plot(t(clust_res), main = "Cluster Procedure", axes = TRUE, xlab = "Memembership", ylab = "Iterations"))
 }
 #' Plot Log Marginal Likelihood Over Iterations
 #'
@@ -158,9 +165,9 @@ plotClusterIter <- function(clust_res, filename){
 #' \dontrun{
 #' plot <- plotmlikeIter(restult$log_mlike)
 #' print(plot)
-#'}
+#' }
 #' @export
-plotmlikeIter <- function(mod){
+plotmlikeIter <- function(mod) {
   data.frame(id = 1:length(mod$log_mlike), log_mlike = mod$log_mlike) |>
     ggplot() +
     geom_line(aes(id, log_mlike)) +
