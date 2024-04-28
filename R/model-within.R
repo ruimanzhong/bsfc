@@ -63,7 +63,7 @@ log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1
     model
   } else {
     if (correction) {
-      mlik_corrected(model,family)
+      log_mlik_corrected(model, formula)
     } else {
       model[["mlik"]][[1]]
     }
@@ -111,7 +111,7 @@ log_mlik_all <- function(Y, membership, X = NULL, N = NULL, formula = Yk ~ 1 + X
   sapply(1:k, log_mlik_each, Y, membership, X, N, formula, family, correction, FALSE, ...)
 }
 
-###############################
+##############################################################
 
 ## Auxiliary function to create data.frame for cluster `k`
 
@@ -147,14 +147,38 @@ prepare_data_each <- function(k, Y, membership, X = NULL, N = NULL) {
   )
 }
 
+##############################################################
+
 ## Auxiliary function to correct the marginal likelihood of INLA model
 
-mlik_corrected <- function(inla_model,family = "normal") {
-  if(family == "normal"){theta <- as.numeric(inla_model[["misc"]][["configs"]][["config"]][[1]][["theta"]][[2]])}else{
-    theta <- as.numeric(inla_model[["misc"]][["configs"]][["config"]][[1]][["theta"]][[1]])}
-  Q <- inla_model[["misc"]][["configs"]][["config"]][[1]][["Qprior"]]
-  dim <- dim(Q)[1] - 1
-  det <- sum(diag(as.matrix(SparseM::chol(Q[1:dim,1:dim])))^2)
-  as.numeric(inla_model[["mlik"]][[1]]) + log(det) * 0.5 - dim * theta * 0.5
+get_structure_matrix = function (model, formula) {
+
+  model = model[["misc"]][["configs"]]
+
+  # effects dimension information
+  x_info = model[["contents"]]
+  ef_start = setNames(x_info$start[-1] - x_info$length[1], x_info$tag[-1])
+  ef_end = ef_start + x_info$length[-1] - 1
+
+  # select effect that requires correction
+  fs = as.list(attr(terms(formula), "variables"))[c(-1,-2)]
+  fs_rw = grepl("model = \"rw", sapply(fs, deparse))
+  fs_vars = sapply(fs, all.vars)[fs_rw]
+
+  # provide structure matrix for selected effects
+  out = list()
+  for (x in fs_vars) {
+    i = ef_start[x]; j = ef_end[x]
+    out[[x]] = model[["config"]][[1]][["Qprior"]][i:j, i:j] /
+      exp(model[["config"]][[1]][["theta"]][paste0("Log precision for ", x)])
+  }
+
+  return(out)
+}
+
+log_mlik_corrected <- function(model, formula) {
+  Slist = get_structure_matrix(model, formula)
+  Slogdet = sapply(Slist, function(x) 2 * sum(log(Matrix::diag(SparseM::chol(x)))))
+  model[["mlik"]][[1]] + 0.5 * sum(Slogdet)
 }
 
