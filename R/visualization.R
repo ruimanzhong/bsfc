@@ -29,41 +29,30 @@
 #' plotClusterFun(Y, 50, cluster_results, models, "path/to/save/cluster_plot.png")
 #' }
 #' @export
-plotClusterFun <- function(Y, nt, clust_res, final_model, a, b, filename) {
-  time <- 1:nt
-  p <- max(clust_res)
-  col_n <- gray.colors(80, alpha = 0.5)
-  ymin <- min(Y)
-  ymax <- max(Y)
-  par(mfrow = c(a, b))
-  time <- seq(0, 1, length.out = nt)
-  for (k in 1:p) {
-    IND <- which(clust_res == k)
-    plot(time, Y[, IND[1]], "l",
-      col = col_n[40], xlab = "t", ylab = "f(t)",
-      main = sprintf("Cluster %d", k), ylim = c(ymin, ymax)
-    )
-    m <- t(matrix(final_model[[k]]$summary.fitted.values$mean, nrow = nt, byrow = FALSE))
-    for (i in 2:length(IND)) {
-      lines(time, Y[, IND[i]], col = col_n[40])
-    }
-    lines(time, colMeans(m), col = "red")
-  }
+plotClusterFun <- function(ydf, nt,ns, clust_res, final_model,  filename) {
+  p = max(clust_res)
+
+  preddf = map(1:10, function(x) final_model[[x]]$summary.fitted.values$mean / exp(final_model[[x]]$summary.random[[1]]$mean)) %>%
+    map(~ matrix(., nrow = 100)) %>%
+    do.call(cbind, .) |>
+    as.data.frame() |>
+    setNames(1:100) |>
+    mutate(time = tdata$time) |>
+    tidyr::pivot_longer(1:100, names_to = "newregion", names_transform = as.numeric) |>
+    mutate(cluster = factor(cluster2[newregion]))
+  cluster2 = rep(1:p, table(clust_res))
+
   png(width = 960, height = 480, filename)
-  par(mfrow = c(3, p / 3))
-  time <- seq(0, 1, length.out = nt)
-  for (k in 1:p) {
-    IND <- which(clust_res == k)
-    plot(time, Y[, IND[1]], "l",
-      col = col_n[40], xlab = "t", ylab = "f(t)",
-      main = sprintf("Cluster %d", k), ylim = c(ymin, ymax)
-    )
-    m <- t(matrix(final_model[[k]]$summary.fitted.values$mean, nrow = nt, byrow = FALSE))
-    for (i in 2:length(IND)) {
-      lines(time, Y[, IND[i]], col = col_n[40])
-    }
-    lines(time, colMeans(m), col = "red")
-  }
+  mutate(ydf, cluster = factor(cluster)) |>
+    ggplot() +
+    geom_line(aes(x = time, y = value, group = region), color = "gray", linewidth = 0.5) +
+    geom_line(aes(x = time, y = value, group = newregion), preddf, color = "red", linewidth = 0.6,
+              linetype = 2) +
+    facet_wrap(~ cluster, ncol = 3) +
+    theme_bw() +
+    theme(legend.position = "none", legend.text = element_text(size = 7)) +
+    labs(title = "Number of cases by cluster per region", color = "Cluster",
+         y = "Number of cases", x = "Time")
   dev.off()
 }
 
@@ -172,4 +161,11 @@ plotmlikeIter <- function(mod) {
     ggplot() +
     geom_line(aes(id, log_mlike)) +
     labs(x = "iteration", y = "log marginal likelihood")
+}
+
+funInterval <- function(k,final_model, fun){
+  r = final_model[[k]]
+  r.samples =INLA::inla.posterior.sample(100, final_model[[k]])
+  f1 = inla.posterior.sample.eval(fun, r.samples)
+  return(f1)
 }

@@ -18,7 +18,7 @@ All simulated datasets are included in the folder \textcolor{red}{Sim-Data}. Her
 rm(list = ls())
 packages = c( "gridExtra", "deldir", "fields", "igraph",  "devtools", "ggplot2", "Matrix.utils", "grid", 
              "parallel", "class", "spgwr", 'sf',
-             "salso", 'spfc',
+             "salso", 'bsfc',
              "fda","mclust")
 
 ## Now load or install&load all packages
@@ -114,19 +114,7 @@ init_val<-list("beta"=beta.ini,
 formula <- Yk~ 1  + Xk
 MCMC= 10000; BURNIN=5000; THIN=1
 ```
-- Run the Fclust-RST method on normal response data:
-```{r message=TRUE, warning=FALSE, include=FALSE}
-# library(RhpcBLASctl)
-# blas_get_num_procs()
-# blas_set_num_threads(6)
-system.time({
-     BayesClust(target,formula, inla.extra, graph0, init_val, hyperpar, MCMC, BURNIN, THIN, path_res, seed = 1234)
- })
 
-# normal case , MCMC = 10000, THIN = 1:
-# user   system  elapsed 
-# 35545.59 23587.49 44591.56 
-```
 
 - Plot the clustering results:
 
@@ -153,28 +141,6 @@ plotClusterFun(eta,nt,clust_res,final_model,a = 3, b=4, file.path(path_im, 'Clus
     ggplot() +
     geom_line(aes(id, log_mlike)) +
     labs(x = "iteration", y = "log marginal likelihood")
-```
-
-- Plot the estimated curve (in red) versus the observed ones (in grey) for each cluster:
-
-```{r echo=TRUE, message=FALSE}
-p = max(clust_res)
-col_n=gray.colors(80, alpha=0.5)
-
-ymin=min(ratio); ymax=max(ratio)
-png(width = 960, height = 480, file.path(path_im,'Clustered Function results AR.png'))
-par(mfrow = c(1,4))
-time = seq(0,1, length.out = nt)
-for(k in 1:p){
-IND=which(clust_res==k)
-plot(time, eta[,IND[1]], "l", col=col_n[40], xlab="t", ylab="f(t)",
-main=sprintf("Cluster %d", k), ylim=c(ymin, ymax))
-m <- t(matrix(result[[k]]$summary.fitted.values$mean, nrow = nt))
-for(i in 2:length(IND))
-lines(time, eta[,IND[i]], col=col_n[40])
-lines(time, colMeans(m), col="red")
-}
-dev.off()
 ```
 
 ### test
@@ -218,50 +184,97 @@ system.time({
 # 6490.794 3292.907 6192.041 
 ```
 In case the chain does not converge, we can continue running the chain on the present results
-```{r}
-path_res <- file.path(path_proj, "data", "result","poisson-glm-c10_continue.RData")
-membership.ini <- cluster_out[nrow(cluster_out),]
-mstgraph.ini <- MST_out[[length(MST_out)]]
-clust_uniq=sort(unique(membership.ini)); k=length(clust_uniq)
-target <- list(Y = data$Y, X = X, N = population)
-hyperpar<-list("c"= 0.5)
-init_val<-list("beta"=beta.ini, 
-               "cluster"= membership.ini, 
-               "trees"=mstgraph.ini)
-MCMC= 2000; BURNIN=500; THIN=1 
- bsfc(target,formula,family = 'poisson', graph0, init_val, hyperpar,correction = F,detailed = F, MCMC, BURNIN, THIN, path_res, seed = 12345)
-```
-```{r}
-load(file.path(path_res))
-clust_res = cluster_out[length(MST_out),]
-p = max(clust_res)
-result=lapply( 1:p, FUN = evalLogMLike_each_INLA, Y, clust_res, X, population, family = "poisson",formula, correction = FALSE, detailed = T)
-# result_t=lapply( 1:p, FUN = evalLogMLike_each_INLA, Y, cluster_true, X, population, family = "poisson",formula, correction = FALSE, detailed = F)
-#   log_like=sum(unlist(result))
-#   log_like_t = sum(unlist(result_t))
-#   log_like
-#   log_like_t
-```
-```{r echo=TRUE, message=FALSE}
-p = max(clust_res)
-col_n=gray.colors(80, alpha=0.5)
 
-ymin=min(exp(eta)); ymax=max(exp(eta))
-png(width = 960, height = 480, file.path(path_im,'Clustered Function results poly_glm_poisson.png'))
-par(mfrow = c(2,4))
-time = seq(0,1, length.out = nt)
-for(k in 1:p){
-IND=which(clust_res==k)
-plot(time, exp(eta)[,IND[1]], "l", col=col_n[40], xlab="t", ylab="f(t)",
-main=sprintf("Cluster %d", k), ylim=c(ymin, ymax))
-m <- t(matrix(result[[k]]$summary.fitted.values$mean, nrow = nt, byrow = FALSE))
-for(i in 2:length(IND))
-lines(time, exp(eta[,IND[i]]), col=col_n[40])
-lines(time, colMeans(m), col="red")
+```{r}
+path_res <- file.path(path_proj, "data", "result","bsfc-glm-poisson.rds")
+result = readRDS(path_res)
+clust_res = result$cluster[nrow(result$cluster),]
+p = max(clust_res)
+final_model = lapply(1:p, log_mlik_each, Y, clust_res, X, population, formula, "poisson", correction = F, detailed = T)
+
+# Calculate frequencies
+ordered_vector <- function(numeric_vector){
+  numeric_vector <- as.numeric(numeric_vector)
+  frequencies <- table(numeric_vector)
+
+# Create ranks based on frequency
+ranks <- rank(-frequencies, ties.method = "min")  # 'min' gives the same rank for ties
+
+# Map these ranks back to the original vector
+ordered_vector <- ranks[as.character(numeric_vector)]
+return(as.factor(ordered_vector))
 }
-dev.off()
 
-png(file.path(path_im,'Cluster Procedure poly_glm_poisson_last300.png'))
-print(fields::image.plot(t(cluster_out[1550:1850,]), main="Cluster Procedure", axes=TRUE, xlab = 'Memembership', ylab = 'Iterations'))
-dev.off()
+cluster_true_ordered <- ordered_vector(cluster_true)
+clust_res_ordered <- ordered_vector(cluster_true)
+
+table(cluster_true_ordered,clust_res_ordered)
+adjustedRandIndex(clust_res, cluster_true)
+
+
+ plotClusterMap(cluster_true = cluster_true_ordered,clust_res = clust_res_ordered, map, file.path(path_im, 'map_poisson_glm.png'))
+
+plotClusterIter(result$cluster,file.path(path_im, 'glm_prod_poi_res.png'))
+
+png(file.path(path_im, 'mlik_poi_glm.png'), width = 960, height = 480)
+  data.frame(id = 1:length(result$log_mlike), log_mlike = result$log_mlike) |>
+    ggplot() +
+    geom_line(aes(id, log_mlike)) +
+    labs(x = "iteration", y = "log marginal likelihood")
+table(cluster_true, result$cluster[nrow(result$cluster),])
+```
+
+```{r}
+p = max(clust_res)
+   ydf = setNames(as.data.frame(Y / population), 1:nrow(map)) |>
+    mutate(time = time) |>
+    tidyr::pivot_longer(1:ns, names_to = "region", names_transform = as.numeric) |>
+    mutate(cluster = clust_res[region])
+cluster2 = rep(1:p, table(clust_res))
+
+preddf = purrr::map(1:p, function(x) final_model[[x]]$summary.fitted.values$mean / exp(final_model[[x]]$summary.random[['id']]$mean)) %>%
+    purrr::map(~ matrix(., nrow = nt)) %>%
+    do.call(cbind, .) |>
+    as.data.frame() |>
+    setNames(1:100) |>
+    mutate(time = time) |>
+    tidyr::pivot_longer(1:ns, names_to = "newregion", names_transform = as.numeric) |>
+    mutate(cluster = factor(cluster2[newregion]))
+
+lowdf = purrr::map(1:p, function(x) final_model[[x]][["summary.fitted.values"]][["0.025quant"]]/ exp(final_model[[x]]$summary.random[['id']][["0.025quant"]])) %>%
+    purrr::map(~ matrix(., nrow = nt)) %>%
+    do.call(cbind, .) |>
+    as.data.frame() |>
+    setNames(1:100) |>
+    mutate(time = time) |>
+    tidyr::pivot_longer(1:ns, names_to = "newregion", names_transform = as.numeric) |>
+    mutate(cluster = factor(cluster2[newregion]))
+
+updf = purrr::map(1:p, function(x) final_model[[x]]$summary.fitted.values[["0.975quant"]] / exp(final_model[[x]]$summary.random[['id']][["0.975quant"]])) %>%
+    purrr::map(~ matrix(., nrow = nt)) %>%
+    do.call(cbind, .) |>
+    as.data.frame() |>
+    setNames(1:100) |>
+    mutate(time = time) |>
+    tidyr::pivot_longer(1:ns, names_to = "newregion", names_transform = as.numeric) |>
+    mutate(cluster = factor(cluster2[newregion]))
+
+```
+
+```{r}
+png(file.path(path_im, 'fun_poi_glm.png'), width = 960, height = 480)
+mutate(ydf, cluster = factor(cluster)) |>
+    ggplot() +
+    geom_line(aes(x = time, y = value, group = region), color = "gray", linewidth = 0.5) +
+     geom_line(aes(x = time, y = value, group = newregion), lowdf, color = "blue", linewidth = 0.5,
+     linetype = 3) +
+  geom_line(aes(x = time, y = value, group = newregion), updf, color = "blue", linewidth = 0.5,
+     linetype = 3) +
+      geom_line(aes(x = time, y = value, group = newregion), preddf, color = "red", linewidth = 0.6,
+    linetype = 2) +
+    facet_wrap(~ cluster, ncol = 3) +
+    theme_bw() +
+    theme(legend.position = "none", legend.text = element_text(size = 7)) +
+    labs(title = "Relative risk by cluster per region", color = "Cluster",
+    y = "RR", x = "Time")
 ```

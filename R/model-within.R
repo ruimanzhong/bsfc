@@ -159,29 +159,25 @@ prepare_data_each <- function(k, Y, membership, X = NULL, N = NULL) {
 ##############################################################
 
 ## Auxiliary function to correct the marginal likelihood of INLA model
+get_structure_matrix = function (model, formula) {
 
-get_structure_matrix <- function(model, formula) {
-  model <- model[["misc"]][["configs"]]
+  model = model[["misc"]][["configs"]]
 
   # effects dimension information
-  x_info <- model[["contents"]]
-  ef_start <- setNames(x_info$start[-1] - x_info$length[1], x_info$tag[-1])
-  ef_end <- ef_start + x_info$length[-1] - 1
+  x_info = model[["contents"]]
+  ef_start = setNames(x_info$start[-1] - x_info$length[1], x_info$tag[-1])
+  ef_end = ef_start + x_info$length[-1] - 1
 
   # select effect that requires correction
-  fs <- as.list(attr(terms(formula), "variables"))[c(-1, -2)]
-
-  pattern <- "f\\((\\w+)(?=[^,]*?, (?!model = \"iid\"))"
-
-  results <- stringr::str_extract_all(sapply(fs, deparse), pattern)
-  fs_vars <- sapply(unlist(results), function(x) gsub("f\\(|\\)", "", x))
+  fs = as.list(attr(terms(formula), "variables"))[c(-1,-2)]
+  fs_rw = grepl("model = \"rw", sapply(fs, deparse))
+  fs_vars = sapply(fs, all.vars)[fs_rw]
 
   # provide structure matrix for selected effects
-  out <- list()
+  out = list()
   for (x in fs_vars) {
-    i <- ef_start[x]
-    j <- ef_end[x]
-    out[[x]] <- model[["config"]][[1]][["Qprior"]][i:j, i:j] /
+    i = ef_start[x]; j = ef_end[x]
+    out[[x]] = model[["config"]][[1]][["Qprior"]][i:j, i:j] /
       exp(model[["config"]][[1]][["theta"]][paste0("Log precision for ", x)])
   }
 
