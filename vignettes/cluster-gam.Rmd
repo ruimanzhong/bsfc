@@ -174,6 +174,7 @@ bsfc(Y, graphdata = geodata, X = time, N = population,
 ```
 ```{r}
 path_res <- file.path(path_proj, "data", "result","bsfc_gam_poisson_ar1.rds")
+path_res <- file.path(path_proj, "data", "result","bsfc_gam_poisson_rw1.rds")
 result = readRDS(path_res)
 clust_res = result$cluster[nrow(result$cluster),]
 cluster_true
@@ -183,11 +184,11 @@ p = max(clust_res)
 
 final_model = result$model
 
-plotClusterMap(cluster_true = cluster_true,clust_res = as.factor(clust_res), map, file.path(path_im, 'map_gam_poisson_ar1.png'))
+plotClusterMap(cluster_true = cluster_true,clust_res = as.factor(clust_res), map, file.path(path_im, 'map_gam_poisson_rw1.png'))
 
-plotClusterIter(result$cluster,file.path(path_im, 'gam_prod_poi_ar1.png'))
+plotClusterIter(result$cluster,file.path(path_im, 'gam_prod_poi_rw1.png'))
 
-png(file.path(path_im, 'mlik_poi_ar1.png'), width = 960, height = 480)
+png(file.path(path_im, 'mlik_poi_rw1.png'), width = 960, height = 480)
   data.frame(id = 1:length(result$log_mlike), log_mlike = result$log_mlike) |>
     ggplot() +
     geom_line(aes(id, log_mlike)) +
@@ -195,15 +196,6 @@ png(file.path(path_im, 'mlik_poi_ar1.png'), width = 960, height = 480)
 table(cluster_true, result$cluster[nrow(result$cluster),])
 ```
 
-```{r}
-funInterval <- function(k,final_model, n){
-  r = final_model[[k]]
-r.samples = inla.posterior.sample(100, final_model[[k]])
- 
- f1 = inla.posterior.sample.eval(fun, r.samples)
- return(f1)
-}
-```
 ```{r}
 p = max(clust_res)
    ydf = setNames(as.data.frame(Y / population), 1:nrow(map)) |>
@@ -241,7 +233,7 @@ final_data <- bind_rows(long_data)
 ```
 
 ```{r}
-png(file.path(path_im, 'fun_poi_gam_ar1.png'), width = 960, height = 480)
+png(file.path(path_im, 'fun_poi_gam_rw1.png'), width = 960, height = 480)
 mutate(ydf, cluster = factor(cluster)) |>
     ggplot() +
     geom_line(aes(x = time, y = value, group = region), color = "gray", linewidth = 0.5) +
@@ -254,6 +246,7 @@ mutate(ydf, cluster = factor(cluster)) |>
     theme(legend.position = "none", legend.text = element_text(size = 7)) +
     labs(title = "Relative risk by cluster per region", color = "Cluster",
     y = "RR", x = "Time")
+dev.off()
 ```
 
 ```{r}
