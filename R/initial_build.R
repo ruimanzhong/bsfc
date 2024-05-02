@@ -111,7 +111,8 @@ ConstructGraph0=function(map,method='knn',para = 10, seed = 1234){
    graph0 <- dentrigraph(coords, threshold = threshold)
  }
  if (method == "adjmat") {
-   adjmat <- sf::st_touches(map) %>% as("matrix")
+   neighbors <- poly2nb(map)
+   adjmat <- nb2mat(neighbors, style = "B", zero.policy = TRUE)
    graph0 <- graph.adjacency(adjmat, mode = "undirected", diag = FALSE)
  }
   return(graph0)

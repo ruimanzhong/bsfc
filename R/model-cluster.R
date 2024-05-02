@@ -45,7 +45,7 @@ bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), 
   }
 
   # dimensions
-  ns <- nrow(Y)
+  ns <- ncol(Y)
 
   # initial values
   graph <- graphdata[["graph"]]

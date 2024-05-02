@@ -9,7 +9,7 @@
 #' @param clust_res Numeric vector containing cluster assignments for each time series in Y.
 #' @param final_model List of model objects for each cluster, each containing a summary of fitted values.
 #' @param a,b plot arrange number
-#' @param filename Character string, the name of the file where the plot will be saved.
+#' @param filepath Character string, the name of the file where the plot will be saved.
 #'
 #' @details The function generates a PNG file with a series of plots arranged in a grid. Each plot corresponds
 #' to a cluster and shows the individual time series in the cluster as well as the mean fitted values across
@@ -29,7 +29,7 @@
 #' plotClusterFun(Y, 50, cluster_results, models, "path/to/save/cluster_plot.png")
 #' }
 #' @export
-plotClusterFun <- function(ydf, nt,ns, clust_res, final_model,  filename) {
+plotClusterFun <- function(ydf, nt,ns, clust_res, final_model,  filepath) {
   p = max(clust_res)
 
   preddf = map(1:10, function(x) final_model[[x]]$summary.fitted.values$mean / exp(final_model[[x]]$summary.random[[1]]$mean)) %>%
@@ -42,7 +42,7 @@ plotClusterFun <- function(ydf, nt,ns, clust_res, final_model,  filename) {
     mutate(cluster = factor(cluster2[newregion]))
   cluster2 = rep(1:p, table(clust_res))
 
-  png(width = 960, height = 480, filename)
+  png(width = 960, height = 480, filepath)
   mutate(ydf, cluster = factor(cluster)) |>
     ggplot() +
     geom_line(aes(x = time, y = value, group = region), color = "gray", linewidth = 0.5) +
@@ -65,7 +65,7 @@ plotClusterFun <- function(ydf, nt,ns, clust_res, final_model,  filename) {
 #' @param clust_res Numeric vector of estimated cluster assignments for each area in the map.
 #' @param cluster_true Numeric vector of true cluster assignments for each area in the map.
 #' @param map An object of class `sf` (simple features), representing the spatial framework for the cluster data.
-#' @param filename Character string, the path and name of the file where the plot will be saved.
+#' @param filepath Character string, the path and name of the file where the plot will be saved.
 #'
 #' @details The function creates two maps using the simple features data provided in `map`. The first map
 #' visualizes the true cluster assignments using different colors, and the second map displays the estimated
@@ -77,7 +77,7 @@ plotClusterFun <- function(ydf, nt,ns, clust_res, final_model,  filename) {
 #' and labeled appropriately.
 #'
 #' @return The function saves the plot to a file and returns an invisible copy of the combined plot object.
-#' The primary output is the PNG file specified by `filename`.
+#' The primary output is the PNG file specified by `filepath`.
 #'
 #' @examples
 #' # Assuming `clust_res`, `cluster_true` are available and `map` is an sf object:
@@ -85,7 +85,7 @@ plotClusterFun <- function(ydf, nt,ns, clust_res, final_model,  filename) {
 #' plotClusterMap(clust_res, cluster_true, map, "path/to/save/cluster_maps.png")
 #' }
 #' @export
-plotClusterMap <- function(clust_res, cluster_true, map, filename) {
+plotClusterMap <- function(clust_res, cluster_true, map, filepath) {
   p1 <- ggplot(map) +
     geom_sf(aes(fill = cluster_true)) +
     theme_bw() +
@@ -95,7 +95,7 @@ plotClusterMap <- function(clust_res, cluster_true, map, filename) {
     theme_bw() +
     labs(title = "Estimated clusters", fill = "Estimated Cluster")
   p <- ggpubr::ggarrange(p1, p2, ncol = 2)
-  png(width = 960, height = 480, filename)
+  png(width = 960, height = 480, filepath)
   print(p)
   dev.off()
   print(p)
@@ -109,7 +109,7 @@ plotClusterMap <- function(clust_res, cluster_true, map, filename) {
 #'
 #' @param clust_res Matrix with rows representing iterations and columns representing membership indices,
 #'        showing the cluster assignment of each member at each iteration.
-#' @param filename Character string specifying the path and name of the PNG file to save the plot.
+#' @param filepath Character string specifying the path and name of the PNG file to save the plot.
 #'
 #' @details The function uses `fields::image.plot` to create a heatmap where each column represents a member
 #' and each row represents an iteration. The color in the heatmap represents the cluster to which
@@ -117,7 +117,7 @@ plotClusterMap <- function(clust_res, cluster_true, map, filename) {
 #' the stability and convergence of the clustering algorithm over time.
 #'
 #' @return Invisibly returns NULL. The function's primary output is the generation of a PNG file specified
-#' by the `filename`. The plot is saved directly to the file, and nothing is returned to the R environment.
+#' by the `filepath`. The plot is saved directly to the file, and nothing is returned to the R environment.
 #'
 #' @examples
 #' # Assuming clust_res is a matrix where rows are iterations and columns are memberships:
@@ -125,8 +125,8 @@ plotClusterMap <- function(clust_res, cluster_true, map, filename) {
 #' plotClusterIter(clust_res, "path/to/save/cluster_iterations.png")
 #' }
 #' @export
-plotClusterIter <- function(clust_res, filename) {
-  png(filename)
+plotClusterIter <- function(clust_res, filepath) {
+  png(filepath)
   print(fields::image.plot(t(clust_res), main = "Cluster Procedure", axes = TRUE, xlab = "Memembership", ylab = "Iterations"))
   dev.off()
   print(fields::image.plot(t(clust_res), main = "Cluster Procedure", axes = TRUE, xlab = "Memembership", ylab = "Iterations"))
@@ -169,3 +169,87 @@ funInterval <- function(k,final_model, fun){
   f1 = inla.posterior.sample.eval(fun, r.samples)
   return(f1)
 }
+
+#' Plot a Graph on Spatial Data
+#'
+#' Visualizes a graph over a spatial map using specified coordinates and graph object.
+#' The function uses the ggraph package to create a custom layout for displaying the graph nodes and edges.
+#'
+#' @param map An sf object representing the spatial data.
+#' @param coords Matrix of coordinates where each row corresponds to a node in the graph.
+#' @param graph0 A graph object, typically an igraph object, representing the graph to be plotted.
+#' @param title Character string specifying the title of the plot.
+#' @param filepath Character string, the name of the file where the plot will be saved.
+#'
+#' @return A ggplot object representing the graph plotted over the spatial data.
+#'
+#' @examples
+#' \dontrun{
+#'   library(sf)
+#'   library(igraph)
+#'   library(ggraph)
+#'   # Assuming 'map' is an sf object and 'coords' are extracted from 'map'
+#'   # and 'graph0' is a previously constructed graph object
+#'   plot <- plotGraph(map, coords, graph0, "Sample Graph")
+#'   print(plot)
+#' }
+#'
+#' @export
+plotGraph <- function(map, coords, graph0, title, filepath){
+  p = ggraph(graph0, layout = 'manual', x = coords[,1], y = coords[,2]) +
+    geom_edge_link() +
+    geom_node_point(color = 'red', size = 3) +
+    geom_sf(data = map, inherit.aes = FALSE, fill = NA) +
+    ggtitle(title) +
+    theme_minimal()
+  if(!is.null(filepath)){
+    png(width = 960, height = 480, filepath)
+    print(p)
+    dev.off()
+  }
+  return(p)
+}
+
+#' Plot a Minimum Spanning Tree on Spatial Data
+#'
+#' Visualizes a minimum spanning tree (MST) over a spatial map using specified coordinates and graph object.
+#' Nodes are colored by cluster assignments. The function uses the ggraph package to create a custom layout
+#' for displaying the MST with nodes and edges.
+#'
+#' @param map An sf object representing the spatial data.
+#' @param coords Matrix of coordinates where each row corresponds to a node in the graph.
+#' @param graph0 A graph object, typically an igraph object, that includes the MST to be plotted.
+#' @param cluster A vector indicating the cluster assignment for each node in the graph.
+#' @param title Character string specifying the title of the plot.
+#' @param filepath Character string, the name of the file where the plot will be saved.
+#'
+#' @return A ggplot object representing the MST plotted over the spatial data with nodes colored by cluster.
+#'
+#' @examples
+#' \dontrun{
+#'   library(sf)
+#'   library(igraph)
+#'   library(ggraph)
+#'   # Assuming 'map' is an sf object, 'coords' are coordinates, 'graph0' is a graph object,
+#'   # and 'cluster' is a vector of cluster assignments
+#'   plot <- plotMST(map, coords, graph0, cluster, "Sample MST")
+#'   print(plot)
+#' }
+#'
+#' @export
+plotMST <- function(map, coords, graph0, cluster, title, filepath = NULL){
+  V(graph0)$cluster <- as.factor(cluster)
+  p = ggraph(graph0, layout = 'manual', x = coords[,1], y = coords[,2]) +
+    geom_edge_link() +
+    geom_node_point(aes(color = cluster), size = 3) +
+    geom_sf(data = map, inherit.aes = FALSE, fill = NA) +
+    ggtitle(title) +
+    theme_minimal()
+  if(!is.null(filepath)){
+    png(width = 960, height = 480, filepath)
+    print(p)
+    dev.off()
+  }
+  return(p)
+}
+
