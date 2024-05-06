@@ -32,13 +32,13 @@
 plotClusterFun <- function(ydf, nt,ns, clust_res, final_model,  filepath) {
   p = max(clust_res)
 
-  preddf = map(1:10, function(x) final_model[[x]]$summary.fitted.values$mean / exp(final_model[[x]]$summary.random[[1]]$mean)) %>%
+  preddf = map(1:p, function(x) final_model[[x]]$summary.fitted.values$mean / exp(final_model[[x]]$summary.random[[1]]$mean)) %>%
     map(~ matrix(., nrow = 100)) %>%
     do.call(cbind, .) |>
     as.data.frame() |>
     setNames(1:100) |>
     mutate(time = tdata$time) |>
-    tidyr::pivot_longer(1:100, names_to = "newregion", names_transform = as.numeric) |>
+    tidyr::pivot_longer(1:ns, names_to = "newregion", names_transform = as.numeric) |>
     mutate(cluster = factor(cluster2[newregion]))
   cluster2 = rep(1:p, table(clust_res))
 
@@ -243,8 +243,9 @@ plotMST <- function(map, coords, graph0, cluster, title, filepath = NULL){
     geom_edge_link() +
     geom_node_point(aes(color = cluster), size = 3) +
     geom_sf(data = map, inherit.aes = FALSE, fill = NA) +
-    ggtitle(title) +
-    theme_minimal()
+    ggtitle(title)+
+    theme_minimal()+
+    theme(legend.position="none")
   if(!is.null(filepath)){
     png(width = 960, height = 480, filepath)
     print(p)

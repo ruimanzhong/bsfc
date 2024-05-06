@@ -242,7 +242,7 @@ bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), 
       log_mlike_out[(iter - burnin) / thin] <- log_mlike
     }
 
-    if (iter %% 100 == 0) {
+    if (iter %% 20 == 0) {
       if (!is.null(path_save)) {
         saveRDS(
           list(
@@ -315,9 +315,11 @@ continue_bsfc <- function(result, Y, X = NULL, N = NULL, graph,
                           formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.5),
                           correction = FALSE, niter = 100, burnin = 0, thin = 1, path_save = NULL, ...) {
   n <- length(result[["mst"]])
-  bsfc(eta,
-    graphdata = list(graph = graph, mst = result[["mst"]][[n]], cluster = result$cluster[n, ]), X = time, N = NULL,
-    formula, family = "normal", hyperpar = list(c = 0.5),
-    correction = T, niter = 2000, burnin = 1000, thin = 1, path_save = path_res
+  cluster <- result[['cluster']][n,]
+  mst <- result[["mst"]][[n]]
+  bsfc(Y,
+    graphdata = list(graph = graph, mst = mst, cluster = cluster), X = X, N = N,
+    formula, family = family, hyperpar = list(c = c),
+    correction , niter = niter, burnin = burnin, thin = thib, path_save = path_res
   )
 }
