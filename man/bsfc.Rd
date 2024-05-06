@@ -12,7 +12,7 @@ bsfc(
   formula = Yk ~ 1 + Xk,
   family = "normal",
   hyperpar = list(c = 0.5),
-  correction = FALSE,
+  correction = NULL,
   niter = 100,
   burnin = 0,
   thin = 1,
@@ -53,14 +53,14 @@ to explore the space of possible cluster configurations.
 \examples{
 # Example setup (note: actual data and parameters need to be defined)
 \dontrun{
-data <- list(Y = matrix(rnorm(100), ncol=10), X = matrix(rnorm(100), ncol=10))
+data <- list(Y = matrix(rnorm(100), ncol = 10), X = matrix(rnorm(100), ncol = 10))
 formula <- Y ~ X1 + X2
 inla.extra <- list(correction = TRUE)
-graph <- matrix(sample(0:1, 100, replace=TRUE), ncol=10)
-init_val <- list(trees = graph, beta = runif(10), cluster = sample(1:5, 10, replace=TRUE))
+graph <- matrix(sample(0:1, 100, replace = TRUE), ncol = 10)
+init_val <- list(trees = graph, beta = runif(10), cluster = sample(1:5, 10, replace = TRUE))
 hyperpar <- list(c = 0.5)
 path_save <- "path/to/save/results/"
 
-bsfc(data,family, formula, graph, init_val, hyperpar, MCMC, burnin, THIN, path_save, seed = 1234)
+bsfc(data, family, formula, graph, init_val, hyperpar, MCMC, burnin, THIN, path_save, seed = 1234)
 }
 }

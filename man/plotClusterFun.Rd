@@ -4,20 +4,20 @@
 \alias{plotClusterFun}
 \title{Plot Clustered Functions}
 \usage{
-plotClusterFun(Y, nt, clust_res, final_model, a, b, filename)
+plotClusterFun(ydf, nt, ns, clust_res, final_model, filepath)
 }
 \arguments{
-\item{Y}{Numeric matrix containing the data to be plotted, with each column representing a different time series.}
-
 \item{nt}{Integer, the number of time points.}
 
 \item{clust_res}{Numeric vector containing cluster assignments for each time series in Y.}
 
 \item{final_model}{List of model objects for each cluster, each containing a summary of fitted values.}
 
-\item{a, b}{plot arrange number}
+\item{filepath}{Character string, the name of the file where the plot will be saved.}
 
-\item{filename}{Character string, the name of the file where the plot will be saved.}
+\item{Y}{Numeric matrix containing the data to be plotted, with each column representing a different time series.}
+
+\item{a, b}{plot arrange number}
 }
 \value{
 Invisible NULL. The function's primary output is a graphical file saved to the specified location.

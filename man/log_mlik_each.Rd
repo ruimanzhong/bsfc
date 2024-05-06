@@ -49,21 +49,25 @@ Depending on the \code{detailed} parameter:
 This function computes the log marginal likelihood for a specific cluster \code{k} within a dataset. It supports multiple family distributions and allows for the inclusion of exposure or trial sizes if applicable. The function is flexible, accepting custom formulas and additional arguments for the INLA model fitting.
 }
 \examples{
-\dontrun{# Define data matrices and parameters
-Y <- matrix(rpois(100, lambda = 10), ncol=10)
-population <- matrix(rpois(100, lambda = 5), ncol=10)
+\dontrun{
+# Define data matrices and parameters
+Y <- matrix(rpois(100, lambda = 10), ncol = 10)
+population <- matrix(rpois(100, lambda = 5), ncol = 10)
 inla.extra <- list(family = "poisson", N = population)
-membership <- sample(1:2, 10, replace=TRUE)
-X <- seq(0,1, length.out = 10)
-a0 <- 0.1; b0 <- 0.1
+membership <- sample(1:2, 10, replace = TRUE)
+X <- seq(0, 1, length.out = 10)
+a0 <- 0.1
+b0 <- 0.1
 
 # Define a formula, the name of the iid random effec should be idx
-formula <- Yk ~ 1 + Xk + f(idx, model = 'iid',
-                 hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
-formula <- Yk ~ 1 + Xk + f(idx, model = 'iid',hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
-formula= Yk~ 1  +f(Xk, model = "rw1", scale.model = TRUE,hyper = list(theta = list(prior="pc.prec", param=c(1,0.01))))+
-f(idx, model = 'iid',hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
-formula= Yk ~ 1  + f(ids,model="iid",group=idt, control.group=list(model="ar1"),hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
+formula <- Yk ~ 1 + Xk + f(idx,
+  model = "iid",
+  hyper = list(prec = list(prior = "loggamma", param = c(a0, b0)))
+)
+formula <- Yk ~ 1 + Xk + f(idx, model = "iid", hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
+formula <- Yk~ 1 + f(Xk, model = "rw1", scale.model = TRUE, hyper = list(theta = list(prior = "pc.prec", param = c(1, 0.01)))) +
+  f(idx, model = "iid", hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
+formula <- Yk ~ 1 + f(ids, model = "iid", group = idt, control.group = list(model = "ar1"), hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
 # Call the function
 result <- log_mlik_each(1, Y, X, inla.extra, membership, custom_formula, TRUE)
 }

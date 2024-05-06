@@ -71,9 +71,11 @@ the analysis without restarting the process, thereby saving computational resour
 \examples{
 # Assuming `result` is already obtained from a previous bsfc run:
 \dontrun{
-continue_bsfc(result, Y = data$response, X = data$covariates, N = data$trials,
-              formula = Yk ~  1 + Xk, family = "normal", hyperpar = list(c = 0.1),
-              correction = TRUE, niter = 500, burnin = 50, thin = 5,
-              path_save = "path/to/continue_results/")
+continue_bsfc(result,
+  Y = data$response, X = data$covariates, N = data$trials,
+  formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.1),
+  correction = TRUE, niter = 500, burnin = 50, thin = 5,
+  path_save = "path/to/continue_results/"
+)
 }
 }

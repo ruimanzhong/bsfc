@@ -4,7 +4,7 @@
 \alias{plotClusterMap}
 \title{Plot True and Estimated Cluster Maps}
 \usage{
-plotClusterMap(clust_res, cluster_true, map, filename)
+plotClusterMap(clust_res, cluster_true, map, filepath)
 }
 \arguments{
 \item{clust_res}{Numeric vector of estimated cluster assignments for each area in the map.}
@@ -13,11 +13,11 @@ plotClusterMap(clust_res, cluster_true, map, filename)
 
 \item{map}{An object of class \code{sf} (simple features), representing the spatial framework for the cluster data.}
 
-\item{filename}{Character string, the path and name of the file where the plot will be saved.}
+\item{filepath}{Character string, the path and name of the file where the plot will be saved.}
 }
 \value{
 The function saves the plot to a file and returns an invisible copy of the combined plot object.
-The primary output is the PNG file specified by \code{filename}.
+The primary output is the PNG file specified by \code{filepath}.
 }
 \description{
 This function generates a side-by-side visualization of true and estimated cluster maps based on spatial data.

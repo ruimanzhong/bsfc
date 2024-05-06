@@ -4,17 +4,17 @@
 \alias{plotClusterIter}
 \title{Plot Clustering Progress Over Iterations}
 \usage{
-plotClusterIter(clust_res, filename)
+plotClusterIter(clust_res, filepath)
 }
 \arguments{
 \item{clust_res}{Matrix with rows representing iterations and columns representing membership indices,
 showing the cluster assignment of each member at each iteration.}
 
-\item{filename}{Character string specifying the path and name of the PNG file to save the plot.}
+\item{filepath}{Character string specifying the path and name of the PNG file to save the plot.}
 }
 \value{
 Invisibly returns NULL. The function's primary output is the generation of a PNG file specified
-by the \code{filename}. The plot is saved directly to the file, and nothing is returned to the R environment.
+by the \code{filepath}. The plot is saved directly to the file, and nothing is returned to the R environment.
 }
 \description{
 This function visualizes the evolution of cluster memberships over iterations.

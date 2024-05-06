@@ -52,9 +52,9 @@ by adjusting the formula, family, and other parameters.
 }
 \examples{
 \dontrun{
-  # Assume Y is a matrix of observations, membership defines cluster memberships
-  # and X is a matrix of covariates:
-  log_mlikelihoods <- log_mlik_all(Y, membership, X = X, family = "poisson")
+# Assume Y is a matrix of observations, membership defines cluster memberships
+# and X is a matrix of covariates:
+log_mlikelihoods <- log_mlik_all(Y, membership, X = X, family = "poisson")
 }
 
 }
