@@ -11,7 +11,7 @@
 #' @param a,b plot arrange number
 #' @param filepath Character string, the name of the file where the plot will be saved.
 #'
-#' @details The function generates a PNG file with a series of plots arranged in a grid. Each plot corresponds
+#' @details The function generates a jpeg file with a series of plots arranged in a grid. Each plot corresponds
 #' to a cluster and shows the individual time series in the cluster as well as the mean fitted values across
 #' the cluster. The function dynamically adjusts the number of rows in the plot grid based on the number
 #' of clusters, aiming to arrange the plots in roughly three columns.
@@ -26,33 +26,40 @@
 #' # Assuming Y is a matrix of time series data, nt is the number of time points,
 #' # clust_res contains cluster assignments, and final_model is a list of model summaries:
 #' \dontrun{
-#' plotClusterFun(Y, 50, cluster_results, models, "path/to/save/cluster_plot.png")
+#' plotClusterFun(Y, 50, cluster_results, models, "path/to/save/cluster_plot.jpeg")
 #' }
 #' @export
-plotClusterFun <- function(ydf, nt,ns, clust_res, final_model,  filepath) {
+plotClusterFun <- function(Y,E, nt,ns, clust_res, final_model,page,  filepath) {
   p = max(clust_res)
-
-  preddf = map(1:p, function(x) final_model[[x]]$summary.fitted.values$mean / exp(final_model[[x]]$summary.random[[1]]$mean)) %>%
-    map(~ matrix(., nrow = 100)) %>%
+  ydf = setNames(as.data.frame(Y / E), 1:ns) |>
+    mutate(time = 1:nt) |>
+    tidyr::pivot_longer(1:ns, names_to = "region", names_transform = as.numeric) |>
+    mutate(cluster = clust_res[region])
+  cluster2 = rep(1:p, table(clust_res))
+  preddf = purrr::map(1:p, function(x) final_model[[x]]$summary.fitted.values$mean / exp(final_model[[x]]$summary.random[['id']]$mean)) %>%
+    purrr::map(~ matrix(., nrow = nt)) %>%
     do.call(cbind, .) |>
     as.data.frame() |>
-    setNames(1:100) |>
-    mutate(time = tdata$time) |>
+    setNames(1:ns) |>
+    mutate(time =  1:nt) |>
     tidyr::pivot_longer(1:ns, names_to = "newregion", names_transform = as.numeric) |>
     mutate(cluster = factor(cluster2[newregion]))
-  cluster2 = rep(1:p, table(clust_res))
-
-  png(width = 960, height = 480, filepath)
-  mutate(ydf, cluster = factor(cluster)) |>
-    ggplot() +
-    geom_line(aes(x = time, y = value, group = region), color = "gray", linewidth = 0.5) +
-    geom_line(aes(x = time, y = value, group = newregion), preddf, color = "red", linewidth = 0.6,
-              linetype = 2) +
-    facet_wrap(~ cluster, ncol = 3) +
-    theme_bw() +
-    theme(legend.position = "none", legend.text = element_text(size = 7)) +
-    labs(title = "Number of cases by cluster per region", color = "Cluster",
-         y = "Number of cases", x = "Time")
+  pdf(filepath, height = 11, width = 8)
+  for (i in 1:page) {
+    ysdf <- ydf %>% filter(cluster %in% ((i-1)*9 +1):(i*9))
+    predsdf <- preddf %>% filter(cluster %in% ((i-1)*9 +1):(i*9))
+    p <- ggplot(ysdf) +
+      geom_line(aes(x = time, y = value, group = region), color = "gray", linewidth = 0.5) +
+      geom_line(data = predsdf, aes(x = time, y = value, group = newregion),
+                color = "red", linewidth = 0.6, linetype = 2) +
+      facet_wrap(~ cluster, ncol = 3, scales = "free_y") +
+      theme_bw() +
+      theme(legend.position = "none", legend.text = element_text(size = 7)) +
+      labs(title = "Relative Risk by cluster per region", color = "Cluster",
+           y = "RR", x = "Time")
+    print(p)
+    # Print plot to the PDF device
+  }
   dev.off()
 }
 
@@ -60,12 +67,13 @@ plotClusterFun <- function(ydf, nt,ns, clust_res, final_model,  filepath) {
 #'
 #' This function generates a side-by-side visualization of true and estimated cluster maps based on spatial data.
 #' The function uses `ggplot2` to create the maps and `ggpubr` for arranging the plots side by side. The output
-#' is saved as a PNG file.
+#' is saved as a jpeg file.
 #'
 #' @param clust_res Numeric vector of estimated cluster assignments for each area in the map.
 #' @param cluster_true Numeric vector of true cluster assignments for each area in the map.
 #' @param map An object of class `sf` (simple features), representing the spatial framework for the cluster data.
 #' @param filepath Character string, the path and name of the file where the plot will be saved.
+#' @param title Character string, title of the plot
 #'
 #' @details The function creates two maps using the simple features data provided in `map`. The first map
 #' visualizes the true cluster assignments using different colors, and the second map displays the estimated
@@ -77,59 +85,65 @@ plotClusterFun <- function(ydf, nt,ns, clust_res, final_model,  filepath) {
 #' and labeled appropriately.
 #'
 #' @return The function saves the plot to a file and returns an invisible copy of the combined plot object.
-#' The primary output is the PNG file specified by `filepath`.
+#' The primary output is the jpeg file specified by `filepath`.
 #'
 #' @examples
 #' # Assuming `clust_res`, `cluster_true` are available and `map` is an sf object:
 #' \dontrun{
-#' plotClusterMap(clust_res, cluster_true, map, "path/to/save/cluster_maps.png")
+#' plotClusterMap(clust_res, cluster_true, map, "path/to/save/cluster_maps.jpeg")
 #' }
 #' @export
-plotClusterMap <- function(clust_res, cluster_true, map, filepath) {
-  p1 <- ggplot(map) +
-    geom_sf(aes(fill = cluster_true)) +
-    theme_bw() +
-    labs(title = "True clusters", fill = "True cluster")
+plotClusterMap <- function(clust_res, cluster_true = NULL, map, filepath = file.path(path_im, 'fun_us_p1.pdf'), title = "Estimated clusters", fill = "Estimated Cluster",palette = NULL) {
   p2 <- ggplot(map) +
-    geom_sf(aes(fill = clust_res)) +
-    theme_bw() +
-    labs(title = "Estimated clusters", fill = "Estimated Cluster")
-  p <- ggpubr::ggarrange(p1, p2, ncol = 2)
-  png(width = 960, height = 480, filepath)
+    geom_sf(aes(fill = factor(clust_res))) +  # Ensure clust_res is treated as a factor
+    scale_fill_manual(values = palette, na.translate = F ) +  # Apply your custom color palette
+    theme_bw() + scale_fill_npg(na.translate = F) +
+    labs(title = title, fill = "Estimated Cluster")
+  if(!is.null(cluster_true)){
+    p1 <- ggplot(map) +
+      geom_sf(aes(fill = cluster_true)) +  # Ensure clust_res is treated as a factor
+      scale_fill_manual(values = palette) +  # Apply your custom color palette+
+      theme_bw() +
+      labs(title = "True clusters", fill = "True cluster")
+    p <- ggpubr::ggarrange(p1, p2, ncol = 2)
+  } else {p <- p2}
+
+  jpeg(width = 960, height = 480, filepath)
   print(p)
   dev.off()
   print(p)
+  return(p)
 }
 
 #' Plot Clustering Progress Over Iterations
 #'
 #' This function visualizes the evolution of cluster memberships over iterations.
 #' It creates a heatmap using the `fields` package to show how clusters change across
-#' different iterations, saving the plot as a PNG file.
+#' different iterations, saving the plot as a jpeg file.
 #'
 #' @param clust_res Matrix with rows representing iterations and columns representing membership indices,
 #'        showing the cluster assignment of each member at each iteration.
-#' @param filepath Character string specifying the path and name of the PNG file to save the plot.
+#' @param filepath Character string specifying the path and name of the jpeg file to save the plot.
 #'
 #' @details The function uses `fields::image.plot` to create a heatmap where each column represents a member
 #' and each row represents an iteration. The color in the heatmap represents the cluster to which
 #' a member belongs in a given iteration. This visual representation helps in understanding
 #' the stability and convergence of the clustering algorithm over time.
 #'
-#' @return Invisibly returns NULL. The function's primary output is the generation of a PNG file specified
+#' @return Invisibly returns NULL. The function's primary output is the generation of a jpeg file specified
 #' by the `filepath`. The plot is saved directly to the file, and nothing is returned to the R environment.
 #'
 #' @examples
 #' # Assuming clust_res is a matrix where rows are iterations and columns are memberships:
 #' \dontrun{
-#' plotClusterIter(clust_res, "path/to/save/cluster_iterations.png")
+#' plotClusterIter(clust_res, "path/to/save/cluster_iterations.jpeg")
 #' }
 #' @export
-plotClusterIter <- function(clust_res, filepath) {
-  png(filepath)
-  print(fields::image.plot(t(clust_res), main = "Cluster Procedure", axes = TRUE, xlab = "Memembership", ylab = "Iterations"))
+plotClusterIter <- function(cluster_out, filepath) {
+  jpeg(filepath)
+  print(fields::image.plot(1:ncol(cluster_out), 1:nrow(cluster_out), t(cluster_out), main = "Cluster Procedure", axes = TRUE, xlab = "Memembership", ylab = "Iterations"))
   dev.off()
-  print(fields::image.plot(t(clust_res), main = "Cluster Procedure", axes = TRUE, xlab = "Memembership", ylab = "Iterations"))
+  print(fields::image.plot(1:ncol(cluster_out), 1:nrow(cluster_out), t(cluster_out), main = "Cluster Procedure", axes = TRUE, xlab = "Memembership", ylab = "Iterations"))
 }
 #' Plot Log Marginal Likelihood Over Iterations
 #'
@@ -156,11 +170,14 @@ plotClusterIter <- function(clust_res, filepath) {
 #' print(plot)
 #' }
 #' @export
-plotmlikeIter <- function(mod) {
-  data.frame(id = 1:length(mod$log_mlike), log_mlike = mod$log_mlike) |>
-    ggplot() +
+plotmlikeIter <- function(log_mlike,filepath) {
+  p <- ggplot(data.frame(id = 1:length(log_mlike), log_mlike = log_mlike)) +
     geom_line(aes(id, log_mlike)) +
     labs(x = "iteration", y = "log marginal likelihood")
+  jpeg(width = 960, height = 480, filepath)
+  print(p)
+  dev.off()
+  print(p)
 }
 
 funInterval <- function(k,final_model, fun){
@@ -203,7 +220,7 @@ plotGraph <- function(map, coords, graph0, title, filepath){
     ggtitle(title) +
     theme_minimal()
   if(!is.null(filepath)){
-    png(width = 960, height = 480, filepath)
+    jpeg(width = 960, height = 480, filepath)
     print(p)
     dev.off()
   }
@@ -247,7 +264,7 @@ plotMST <- function(map, coords, graph0, cluster, title, filepath = NULL){
     theme_minimal()+
     theme(legend.position="none")
   if(!is.null(filepath)){
-    png(width = 960, height = 480, filepath)
+    jpeg(width = 960, height = 480, filepath)
     print(p)
     dev.off()
   }
