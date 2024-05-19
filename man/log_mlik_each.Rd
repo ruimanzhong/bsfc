@@ -14,6 +14,7 @@ log_mlik_each(
   family = "normal",
   correction = FALSE,
   detailed = FALSE,
+  test = F,
   ...
 )
 }
@@ -35,6 +36,8 @@ log_mlik_each(
 \item{correction}{Logical, indicating whether a correction should be applied to the computed log marginal likelihood; defaults to FALSE.}
 
 \item{detailed}{Logical, specifying whether to return the full model object or just the log marginal likelihood; defaults to FALSE.}
+
+\item{test}{Bool, if print membership}
 
 \item{...}{Additional arguments passed to the INLA function.}
 }

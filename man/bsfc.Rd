@@ -18,6 +18,7 @@ bsfc(
   thin = 1,
   path_save = NULL,
   seed = 1234,
+  test = F,
   ...
 )
 }
@@ -33,6 +34,8 @@ bsfc(
 \item{path_save}{Character, the path where results should be saved.}
 
 \item{seed}{Integer, seed value for random number generation, defaults to 1234.}
+
+\item{test}{Bool, if print membership}
 
 \item{data}{A list containing data matrices 'Y' and 'X', and 'N' for the number of trials or cases.}
 

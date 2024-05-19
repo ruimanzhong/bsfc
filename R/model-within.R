@@ -12,10 +12,12 @@
 #' @param correction Logical, indicating whether a correction should be applied to the computed log marginal likelihood; defaults to FALSE.
 #' @param detailed Logical, specifying whether to return the full model object or just the log marginal likelihood; defaults to FALSE.
 #' @param ... Additional arguments passed to the INLA function.
+#' @param test Bool, if print membership
 #'
 #' @return Depending on the `detailed` parameter:
 #'   - If `detailed` is TRUE, returns the full `INLA` model object.
 #'   - If `detailed` is FALSE, returns the log marginal likelihood (corrected if `correction` is TRUE).
+#'
 #'
 #' @examples
 #' \dontrun{
@@ -99,6 +101,7 @@ log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1
 #' @param correction Logical indicating whether a correction for dispersion or other factors
 #'        should be applied. Defaults to FALSE.
 #' @param ... Additional arguments passed to the underlying `log_mlik_each` function.
+#' @param test Bool, if print membership
 #'
 #' @details This function iterates over the unique clusters defined in the `membership` vector and
 #'          calculates the log marginal likelihood for each cluster using the `log_mlik_each` function.

@@ -15,6 +15,7 @@
 #' @param thin Integer, thinning interval for recording the results.
 #' @param path_save Character, the path where results should be saved.
 #' @param seed Integer, seed value for random number generation, defaults to 1234.
+#' @param test Bool, if print membership
 #'
 #' @return NULL The function primarily outputs results to a specified path and does not return anything.
 #'
