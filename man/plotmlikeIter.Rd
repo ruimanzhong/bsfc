@@ -4,7 +4,7 @@
 \alias{plotmlikeIter}
 \title{Plot Log Marginal Likelihood Over Iterations}
 \usage{
-plotmlikeIter(mod)
+plotmlikeIter(log_mlike, height, filepath)
 }
 \arguments{
 \item{log_mlike}{Numeric vector containing the log marginal likelihood values at each iteration.}

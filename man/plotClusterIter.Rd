@@ -4,22 +4,22 @@
 \alias{plotClusterIter}
 \title{Plot Clustering Progress Over Iterations}
 \usage{
-plotClusterIter(clust_res, filepath)
+plotClusterIter(cluster_out, height, filepath)
 }
 \arguments{
+\item{filepath}{Character string specifying the path and name of the jpeg file to save the plot.}
+
 \item{clust_res}{Matrix with rows representing iterations and columns representing membership indices,
 showing the cluster assignment of each member at each iteration.}
-
-\item{filepath}{Character string specifying the path and name of the PNG file to save the plot.}
 }
 \value{
-Invisibly returns NULL. The function's primary output is the generation of a PNG file specified
+Invisibly returns NULL. The function's primary output is the generation of a jpeg file specified
 by the \code{filepath}. The plot is saved directly to the file, and nothing is returned to the R environment.
 }
 \description{
 This function visualizes the evolution of cluster memberships over iterations.
 It creates a heatmap using the \code{fields} package to show how clusters change across
-different iterations, saving the plot as a PNG file.
+different iterations, saving the plot as a jpeg file.
 }
 \details{
 The function uses \code{fields::image.plot} to create a heatmap where each column represents a member
@@ -30,6 +30,6 @@ the stability and convergence of the clustering algorithm over time.
 \examples{
 # Assuming clust_res is a matrix where rows are iterations and columns are memberships:
 \dontrun{
-plotClusterIter(clust_res, "path/to/save/cluster_iterations.png")
+plotClusterIter(clust_res, "path/to/save/cluster_iterations.jpeg")
 }
 }

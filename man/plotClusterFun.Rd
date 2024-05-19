@@ -4,9 +4,11 @@
 \alias{plotClusterFun}
 \title{Plot Clustered Functions}
 \usage{
-plotClusterFun(ydf, nt, ns, clust_res, final_model, filepath)
+plotClusterFun(Y, E, nt, ns, clust_res, final_model, page, filepath)
 }
 \arguments{
+\item{Y}{Numeric matrix containing the data to be plotted, with each column representing a different time series.}
+
 \item{nt}{Integer, the number of time points.}
 
 \item{clust_res}{Numeric vector containing cluster assignments for each time series in Y.}
@@ -14,8 +16,6 @@ plotClusterFun(ydf, nt, ns, clust_res, final_model, filepath)
 \item{final_model}{List of model objects for each cluster, each containing a summary of fitted values.}
 
 \item{filepath}{Character string, the name of the file where the plot will be saved.}
-
-\item{Y}{Numeric matrix containing the data to be plotted, with each column representing a different time series.}
 
 \item{a, b}{plot arrange number}
 }
@@ -29,7 +29,7 @@ It uses pre-computed model results to add a line representing the mean fitted va
 The function saves the plots to a specified file.
 }
 \details{
-The function generates a PNG file with a series of plots arranged in a grid. Each plot corresponds
+The function generates a jpeg file with a series of plots arranged in a grid. Each plot corresponds
 to a cluster and shows the individual time series in the cluster as well as the mean fitted values across
 the cluster. The function dynamically adjusts the number of rows in the plot grid based on the number
 of clusters, aiming to arrange the plots in roughly three columns.
@@ -41,6 +41,6 @@ while the mean of the model's fitted values for each cluster is plotted in red f
 # Assuming Y is a matrix of time series data, nt is the number of time points,
 # clust_res contains cluster assignments, and final_model is a list of model summaries:
 \dontrun{
-plotClusterFun(Y, 50, cluster_results, models, "path/to/save/cluster_plot.png")
+plotClusterFun(Y, 50, cluster_results, models, "path/to/save/cluster_plot.jpeg")
 }
 }

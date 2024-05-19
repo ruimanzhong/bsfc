@@ -17,6 +17,7 @@ bsfc(
   burnin = 0,
   thin = 1,
   path_save = NULL,
+  seed = 1234,
   ...
 )
 }
@@ -31,6 +32,8 @@ bsfc(
 
 \item{path_save}{Character, the path where results should be saved.}
 
+\item{seed}{Integer, seed value for random number generation, defaults to 1234.}
+
 \item{data}{A list containing data matrices 'Y' and 'X', and 'N' for the number of trials or cases.}
 
 \item{graph}{Initial spanning tree used for the Bayesian model.}
@@ -38,8 +41,6 @@ bsfc(
 \item{init_val}{List of initial values for parameters 'trees', 'beta', and 'cluster'.}
 
 \item{MCMC}{Integer, number of MCMC iterations to perform.}
-
-\item{seed}{Integer, seed value for random number generation, defaults to 1234.}
 }
 \value{
 NULL The function primarily outputs results to a specified path and does not return anything.

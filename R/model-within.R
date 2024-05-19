@@ -43,6 +43,7 @@
 #' @export
 log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1 + Xk,
                           family = "normal", correction = FALSE, detailed = FALSE, ...) {
+  if(test){print(k)}
   inla_data <- prepare_data_each(k, Y, membership, X, N)
   if (family == "poisson") {
     model <- INLA::inla(formula, family,
@@ -171,8 +172,8 @@ get_structure_matrix = function (model, formula) {
   # select effect that requires correction
   fs = as.list(attr(terms(formula), "variables"))[c(-1,-2)]
   pattern <- "f\\((\\w+), model = \"rw\\d*\""
-   results <- stringr::str_extract_all(sapply(fs, deparse), pattern)
-   fs_vars <- sapply(unlist(results), function(x) gsub("f\\(|, model.*", "", x))
+  results <- stringr::str_extract_all(sapply(fs, deparse), pattern)
+  fs_vars <- sapply(unlist(results), function(x) gsub("f\\(|, model = .*", "", x))
 
   # provide structure matrix for selected effects
   out = list()
