@@ -42,7 +42,7 @@
 #' }
 #' @export
 log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1 + Xk,
-                          family = "normal", correction = FALSE, detailed = FALSE, ...) {
+                          family = "normal", correction = FALSE, detailed = FALSE, test = F,...) {
   if(test){print(k)}
   inla_data <- prepare_data_each(k, Y, membership, X, N)
   if (family == "poisson") {
@@ -116,9 +116,9 @@ log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1
 #'
 #' @export
 log_mlik_all <- function(Y, membership, X = NULL, N = NULL, formula = Yk ~ 1 + Xk,
-                         family = "normal", correction = FALSE, ...) {
+                         family = "normal", correction = FALSE,test = F, ...) {
   k <- max(membership)
-  sapply(1:k, log_mlik_each, Y, membership, X, N, formula, family, correction, FALSE, ...)
+  sapply(1:k, log_mlik_each, Y, membership, X, N, formula, family, correction, FALSE, test,...)
 }
 
 ##############################################################

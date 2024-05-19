@@ -34,7 +34,7 @@
 #' @export
 bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), X = NULL, N = NULL,
                  formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.5),
-                 correction = NULL, niter = 100, burnin = 0, thin = 1, path_save = NULL,seed = 1234,  ...) {
+                 correction = NULL, niter = 100, burnin = 0, thin = 1, path_save = NULL,seed = 1234,test = F,  ...) {
   ## Setup
  set.seed(seed)
   # apply correction if rw effect is used
@@ -65,7 +65,7 @@ bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), 
   ## Initialize
 
   # initialize log likelihood vector
-  log_mlike_vec <- log_mlik_all(Y, cluster, X, N, formula, family, correction,...)
+  log_mlike_vec <- log_mlik_all(Y, cluster, X, N, formula, family, correction,test,...)
   log_mlike <- sum(log_mlike_vec)
 
   # whether an edge in graph is within a cluster or bewteen two clusters
