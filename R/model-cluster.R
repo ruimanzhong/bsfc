@@ -65,7 +65,7 @@ bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), 
   ## Initialize
 
   # initialize log likelihood vector
-  log_mlike_vec <- log_mlik_all(Y, cluster, X, N, formula, family, correction)
+  log_mlike_vec <- log_mlik_all(Y, cluster, X, N, formula, family, correction,...)
   log_mlike <- sum(log_mlike_vec)
 
   # whether an edge in graph is within a cluster or bewteen two clusters
