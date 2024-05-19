@@ -44,7 +44,6 @@ plotClusterFun <- function(Y,E, nt,ns, clust_res, final_model,page,  filepath) {
     mutate(time =  1:nt) |>
     tidyr::pivot_longer(1:ns, names_to = "newregion", names_transform = as.numeric) |>
     mutate(cluster = factor(cluster2[newregion]))
-  pdf(filepath, height = 11, width = 8)
   for (i in 1:page) {
     ysdf <- ydf %>% filter(cluster %in% ((i-1)*9 +1):(i*9))
     predsdf <- preddf %>% filter(cluster %in% ((i-1)*9 +1):(i*9))
@@ -60,7 +59,12 @@ plotClusterFun <- function(Y,E, nt,ns, clust_res, final_model,page,  filepath) {
     print(p)
     # Print plot to the PDF device
   }
-  dev.off()
+  combined_plot <- patchwork::wrap_plots(plot_list, ncol = 3)
+
+  # Save the combined plot as a PDF using ggsave
+  ggsave(filename = filepath, plot = combined_plot, device = "pdf", width = 8.27, height = 11.69, units = "in", dpi = 300)
+
+  return(combined_plot)
 }
 
 #' Plot True and Estimated Cluster Maps
@@ -93,28 +97,109 @@ plotClusterFun <- function(Y,E, nt,ns, clust_res, final_model,page,  filepath) {
 #' plotClusterMap(clust_res, cluster_true, map, "path/to/save/cluster_maps.jpeg")
 #' }
 #' @export
-plotClusterMap <- function(clust_res, cluster_true = NULL, map, filepath = file.path(path_im, 'fun_us_p1.pdf'), title = "Estimated clusters", fill = "Estimated Cluster",palette = NULL) {
+plotClusterMap <- function(clust_res, cluster_true = NULL, map, height, filepath = file.path(path_im, 'fun_us_p1.pdf'), title = "Estimated clusters", fill = "Estimated Cluster",palette = NULL) {
+  # Plot for estimated clusters
   p2 <- ggplot(map) +
-    geom_sf(aes(fill = factor(clust_res))) +  # Ensure clust_res is treated as a factor
-    scale_fill_manual(values = palette, na.translate = F ) +  # Apply your custom color palette
-    theme_bw() + scale_fill_npg(na.translate = F) +
+    geom_sf(aes(fill = factor(clust_res)))  +  # Apply your custom color palette
+    theme_bw() +
+    theme(
+      plot.title = element_text(size = 20), # Larger title font size
+      axis.title = element_blank(),         # No axis titles
+      axis.text = element_blank(),          # No axis text
+      axis.ticks = element_blank(),         # No axis ticks
+      panel.grid = element_blank()          # No panel grid
+    ) +
     labs(title = title, fill = "Estimated Cluster")
-  if(!is.null(cluster_true)){
-    p1 <- ggplot(map) +
-      geom_sf(aes(fill = cluster_true)) +  # Ensure clust_res is treated as a factor
-      scale_fill_manual(values = palette) +  # Apply your custom color palette+
-      theme_bw() +
-      labs(title = "True clusters", fill = "True cluster")
-    p <- ggpubr::ggarrange(p1, p2, ncol = 2)
-  } else {p <- p2}
 
-  jpeg(width = 960, height = 480, filepath)
-  print(p)
-  dev.off()
-  print(p)
+  # Plot for true clusters (if provided)
+  if (!is.null(cluster_true)) {
+    p1 <- ggplot(map) +
+      geom_sf(aes(fill = cluster_true))  +  # Apply your custom color palette
+      theme_bw() +
+      theme(
+        plot.title = element_text(size = 20), # Larger title font size
+        axis.title = element_blank(),         # No axis titles
+        axis.text = element_blank(),          # No axis text
+        axis.ticks = element_blank(),         # No axis ticks
+        panel.grid = element_blank()          # No panel grid
+      ) +
+      labs(title = "True clusters", fill = "True cluster")
+
+    # Arrange the two plots side by side
+    p <- ggpubr::ggarrange(p1, p2, ncol = 2)
+  } else {
+    p <- p2
+  }
+
+  # Save the plot
+  ggsave(filename = filepath, plot = p, device = "jpg", width = 8.27, height = height, units = "in", dpi = 300)
+
   return(p)
 }
+#' Plot True and Estimated Cluster Maps
+#'
+#' This function generates a side-by-side visualization of true and estimated cluster maps based on spatial data.
+#' The function uses `ggplot2` to create the maps and `ggpubr` for arranging the plots side by side. The output
+#' is saved as a jpeg file.
+#'
+#' @param cluster_res Numeric vector of estimated cluster assignments for each area in the map.
+#' @param map An object of class `sf` (simple features), representing the spatial framework for the cluster data.
+#' @param filepath Character string, the path and name of the file where the plot will be saved.
+#' @param title Character string, title of the plot
+#'
+#' @details The function creates two maps using the simple features data provided in `map`. The first map
+#' visualizes the true cluster assignments using different colors, and the second map displays the estimated
+#' cluster assignments. These maps are helpful for comparing the accuracy of cluster predictions against
+#' ground truth in spatial clustering analyses.
+#'
+#' The plots are arranged side by side for easy comparison, with the left map showing true clusters and the
+#' right map showing estimated clusters. Both maps are enhanced with `theme_bw()` for a clean background
+#' and labeled appropriately.
+#'
+#' @return The function saves the plot to a file and returns an invisible copy of the combined plot object.
+#' The primary output is the jpeg file specified by `filepath`.
+#'
+#' @examples
+#' # Assuming `clust_res`, `cluster_true` are available and `map` is an sf object:
+#' \dontrun{
+#' plotClusterMap2(clust_res,3, map, "path/to/save/cluster_maps.jpeg")
+#' }
+#' @export
+#'
+plotClusterMap2 <- function(cluster_res, map, filepath = file.path(path_im, 'fun_us_p1.pdf'), title = "Estimated clusters", fill = "Cluster", palette = NULL) {
+  p = max(cluster_res)
+  plot_list = list()
+  num_labels <- length(unique(cluster_res))
 
+  for (i in 1:ceiling(p/9)) {
+    start_label <- (i-1) * 9 + 1
+    end_label <- min(i *9, num_labels)
+
+    current_labels <- start_label:end_label
+    map$clust_res <- ifelse(cluster_res %in% current_labels, cluster_res, NA)
+
+    plot_list[[i]] <- ggplot(map) +
+      geom_sf(aes(fill = as.factor(clust_res))) +  # Ensure clust_res is treated as a factor
+      + scale_fill_npg(na.translate = F) +  # Apply your custom color palette
+      theme_bw() +
+      theme(
+        legend.title = element_text(size = 18),
+        legend.text = element_text(size = 18),
+        axis.title = element_blank(),         # No axis titles
+        axis.text = element_blank(),          # No axis text
+        axis.ticks = element_blank(),         # No axis ticks
+        panel.grid = element_blank()          # No panel grid
+      ) +
+      labs(title = paste("Clusters", start_label, "to", end_label), fill = fill)
+  }
+  # Combine the plots into a single layout
+  combined_plot <- patchwork::wrap_plots(plot_list, ncol = 2)
+
+  # Save the combined plot as a PDF using ggsave
+  ggsave(filename = filepath, plot = combined_plot, device = "pdf", width = 8.27, height = 11.69, units = "in", dpi = 300)
+
+  return(combined_plot)
+}
 #' Plot Clustering Progress Over Iterations
 #'
 #' This function visualizes the evolution of cluster memberships over iterations.
@@ -139,11 +224,19 @@ plotClusterMap <- function(clust_res, cluster_true = NULL, map, filepath = file.
 #' plotClusterIter(clust_res, "path/to/save/cluster_iterations.jpeg")
 #' }
 #' @export
-plotClusterIter <- function(cluster_out, filepath) {
-  jpeg(filepath)
-  print(fields::image.plot(1:ncol(cluster_out), 1:nrow(cluster_out), t(cluster_out), main = "Cluster Procedure", axes = TRUE, xlab = "Memembership", ylab = "Iterations"))
-  dev.off()
-  print(fields::image.plot(1:ncol(cluster_out), 1:nrow(cluster_out), t(cluster_out), main = "Cluster Procedure", axes = TRUE, xlab = "Memembership", ylab = "Iterations"))
+#'
+plotClusterIter <- function(cluster_out, height, filepath) {
+  melted_data <- reshape2::melt(cluster_out)
+  colnames(melted_data) <- c("Iteration", "Memebership", "Value")
+  p <- ggplot(melted_data, aes(x = Memebership, y = Iteration, fill = Value)) +
+    geom_tile() +
+    scale_fill_gradient(low = "white", high = "blue")+
+    scale_fill_gsea() +
+    theme_minimal() +
+    labs(title = "Cluster Procedure", x = "Membership", y = "Iterations") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  ggsave(filename = filepath, plot = p, device = "jpg", width = 8.27, height = height, units = "in", dpi = 300)
+  return(p)
 }
 #' Plot Log Marginal Likelihood Over Iterations
 #'
@@ -170,14 +263,14 @@ plotClusterIter <- function(cluster_out, filepath) {
 #' print(plot)
 #' }
 #' @export
-plotmlikeIter <- function(log_mlike,filepath) {
+plotmlikeIter <- function(log_mlike,height, filepath) {
   p <- ggplot(data.frame(id = 1:length(log_mlike), log_mlike = log_mlike)) +
     geom_line(aes(id, log_mlike)) +
+    theme_minimal() +
     labs(x = "iteration", y = "log marginal likelihood")
   jpeg(width = 960, height = 480, filepath)
-  print(p)
-  dev.off()
-  print(p)
+  ggsave(filename = filepath, plot = p, device = "jpg", width = 8.27, height = height, units = "in", dpi = 300)
+  return(p)
 }
 
 funInterval <- function(k,final_model, fun){
