@@ -76,7 +76,7 @@ log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1
     model
   } else {
     if (correction) {
-      log_mlik_corrected(model, formula)
+      model[["mlik"]][[1]] + log_mlik_correction(model, formula)
     } else {
       model[["mlik"]][[1]]
     }
@@ -165,6 +165,10 @@ prepare_data_each <- function(k, Y, membership, X = NULL, N = NULL) {
 ## Auxiliary function to correct the marginal likelihood of INLA model
 get_structure_matrix = function (model, formula) {
 
+  # prior diagonal
+  prior_diagonal <- model[[".args"]][["control.compute"]][["control.gcpo"]][["prior.diagonal"]]
+
+  # model config
   model = model[["misc"]][["configs"]]
 
   # effects dimension information
@@ -179,11 +183,17 @@ get_structure_matrix = function (model, formula) {
   fs_vars <- sapply(unlist(results), function(x) gsub("f\\(|, model = .*", "", x))
 
   # provide structure matrix for selected effects
+  ind <- which.max(sapply(model[["config"]], function(x) x$log.posterior))
+
   out = list()
   for (x in fs_vars) {
     i = ef_start[x]; j = ef_end[x]
-    out[[x]] = model[["config"]][[1]][["Qprior"]][i:j, i:j] /
-      exp(model[["config"]][[1]][["theta"]][paste0("Log precision for ", x)])
+    Qaux <- model[["config"]][[ind]][["Qprior"]][i:j, i:j]
+    Matrix::diag(Qaux) <- Matrix::diag(Qaux) - prior_diagonal
+    Qaux <- Qaux /
+      exp(model[["config"]][[ind]][["theta"]][paste0("Log precision for ", x)])
+    Matrix::diag(Qaux) <- Matrix::diag(Qaux) + prior_diagonal
+    out[[x]] <- Qaux
   }
 
   return(out)
@@ -193,4 +203,10 @@ log_mlik_corrected <- function(model, formula) {
   Slist <- get_structure_matrix(model, formula)
   Slogdet <- sapply(Slist, function(x) 2 * sum(log(Matrix::diag(SparseM::chol(x)))))
   model[["mlik"]][[1]] + 0.5 * sum(Slogdet)
+}
+
+log_mlik_correction <- function(model, formula) {
+  Slist <- get_structure_matrix(model, formula)
+  Slogdet <- sapply(Slist, function(x) 2 * sum(log(Matrix::diag(SparseM::chol(x)))))
+  0.5 * sum(Slogdet)
 }

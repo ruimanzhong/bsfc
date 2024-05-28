@@ -35,9 +35,8 @@
 #' @export
 bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), X = NULL, N = NULL,
                  formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.5),
-                 correction = NULL, niter = 100, burnin = 0, thin = 1, path_save = NULL,seed = 1234,test = F,  ...) {
+                 correction = NULL, niter = 100, burnin = 0, thin = 1, path_save = NULL, nsave = 10, test = F,  ...) {
   ## Setup
- set.seed(seed)
   # apply correction if rw effect is used
   if (is.null(correction)) {
     fs <- as.list(attr(terms(formula), "variables"))[c(-1, -2)]
@@ -231,7 +230,11 @@ bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), 
     ## Store estimates
 
     if (iter %% 10 == 0) {
-      cat("Iteration ", iter, ": clusters = ", k, ", births = ", birth_cnt, ", deaths = ",
+      # cat("Iteration ", iter, ": clusters = ", k, ", births = ", birth_cnt, ", deaths = ",
+      #   death_cnt, ", changes = ", change_cnt, ", hypers = ", hyper_cnt, ", log_mlike = ", log_mlike, "\n",
+      #   sep = ""
+      # )
+      message("Iteration ", iter, ": clusters = ", k, ", births = ", birth_cnt, ", deaths = ",
         death_cnt, ", changes = ", change_cnt, ", hypers = ", hyper_cnt, ", log_mlike = ", log_mlike, "\n",
         sep = ""
       )
@@ -243,7 +246,7 @@ bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), 
       log_mlike_out[(iter - burnin) / thin] <- log_mlike
     }
 
-    if (iter %% 20 == 0) {
+    if (iter %% nsave == 0) {
       if (!is.null(path_save)) {
         saveRDS(
           list(
