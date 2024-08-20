@@ -146,7 +146,7 @@ prepare_data_each <- function(k, Y, membership, X = NULL, N = NULL) {
   }
 
   # predictors
-  if (is.vector(X)) {
+  if (is.vector(X) | is.factor(X)) {
     Xk <- rep(X, times = nk)
   } else if (is.matrix(X)) {
     Xk <- kronecker(rep(1, nk), X)
@@ -173,10 +173,10 @@ get_structure_matrix = function (model, formula) {
   ef_end = ef_start + x_info$length[-1] - 1
 
   # select effect that requires correction
-  fs = as.list(attr(terms(formula), "variables"))[c(-1,-2)]
-  pattern <- "f\\((\\w+), model = \"rw\\d*\""
-  results <- stringr::str_extract_all(sapply(fs, deparse), pattern)
-  fs_vars <- sapply(unlist(results), function(x) gsub("f\\(|, model = .*", "", x))
+  # fs = as.list(attr(terms(formula), "variables"))[c(-1,-2)]
+  # pattern <- "f\\((\\w+),[^,]+, model = \"rw\\d*\""
+  # results <- stringr::str_extract_all(sapply(fs, deparse))
+  fs_vars <- "idt"
 
   # provide structure matrix for selected effects
   out = list()
