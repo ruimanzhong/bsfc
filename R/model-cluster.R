@@ -35,14 +35,9 @@
 #' @export
 bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), X = NULL, N = NULL,
                  formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.5),
-                 correction = NULL, niter = 100, burnin = 0, thin = 1, path_save = NULL, nsave = 10, test = F,  ...) {
+                 correction = NULL, niter = 100, burnin = 0, thin = 1, path_save = NULL, nsave = 10,  ...) {
   ## Setup
   # apply correction if rw effect is used
-  if (is.null(correction)) {
-    fs <- as.list(attr(terms(formula), "variables"))[c(-1, -2)]
-    fs <- grepl("model = \"rw", sapply(fs, deparse))
-    correction <- any(fs)
-  }
 
   # dimensions
   ns <- ncol(Y)
