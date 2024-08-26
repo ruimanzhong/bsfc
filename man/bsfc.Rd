@@ -17,7 +17,6 @@ bsfc(
   burnin = 0,
   thin = 1,
   path_save = NULL,
-  seed = 1234,
   test = F,
   ...
 )
@@ -25,15 +24,13 @@ bsfc(
 \arguments{
 \item{formula}{A formula object representing the model to be fitted.}
 
-\item{hyperpar}{List containing hyperparameters used in the model.}
+\item{hyperpar}{c is the penalty of the cluster number.}
 
 \item{burnin}{Integer, number of burn-in iterations to discard.}
 
 \item{thin}{Integer, thinning interval for recording the results.}
 
 \item{path_save}{Character, the path where results should be saved.}
-
-\item{seed}{Integer, seed value for random number generation, defaults to 1234.}
 
 \item{test}{Bool, if print membership}
 
@@ -44,6 +41,8 @@ bsfc(
 \item{init_val}{List of initial values for parameters 'trees', 'beta', and 'cluster'.}
 
 \item{MCMC}{Integer, number of MCMC iterations to perform.}
+
+\item{seed}{Integer, seed value for random number generation, defaults to 1234.}
 }
 \value{
 NULL The function primarily outputs results to a specified path and does not return anything.

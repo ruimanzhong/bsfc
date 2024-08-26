@@ -9,7 +9,7 @@
 #' @param formula A formula object representing the model to be fitted.
 #' @param graph Initial spanning tree used for the Bayesian model.
 #' @param init_val List of initial values for parameters 'trees', 'beta', and 'cluster'.
-#' @param hyperpar List containing hyperparameters used in the model.
+#' @param hyperpar c is the penalty of the cluster number.
 #' @param MCMC Integer, number of MCMC iterations to perform.
 #' @param burnin Integer, number of burn-in iterations to discard.
 #' @param thin Integer, thinning interval for recording the results.
@@ -316,9 +316,10 @@ continue_bsfc <- function(result, Y, X = NULL, N = NULL, graph,
   n <- length(result[["mst"]])
   cluster <- result[['cluster']][n,]
   mst <- result[["mst"]][[n]]
+  c = hyperpar$c
   bsfc(Y,
     graphdata = list(graph = graph, mst = mst, cluster = cluster), X = X, N = N,
     formula, family = family, hyperpar = list(c = c),
-    correction , niter = niter, burnin = burnin, thin = thib, path_save = path_res
+    correction , niter = niter, burnin = burnin, thin = thin, path_save = path_res
   )
 }

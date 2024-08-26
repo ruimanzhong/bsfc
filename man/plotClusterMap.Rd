@@ -8,10 +8,10 @@ plotClusterMap(
   clust_res,
   cluster_true = NULL,
   map,
-  height,
-  filepath = file.path(path_im, "fun_us_p1.pdf"),
-  title = "Estimated clusters",
-  fill = "Estimated Cluster",
+  height = NULL,
+  filepath = NULL,
+  title = "Estimated Clusters",
+  fill = "Estimated",
   palette = NULL
 )
 }

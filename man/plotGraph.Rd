@@ -4,7 +4,7 @@
 \alias{plotGraph}
 \title{Plot a Graph on Spatial Data}
 \usage{
-plotGraph(map, coords, graph0, title, filepath)
+plotGraph(map, coords, graph0, title, filepath = NULL)
 }
 \arguments{
 \item{map}{An sf object representing the spatial data.}

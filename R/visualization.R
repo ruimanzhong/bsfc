@@ -172,7 +172,7 @@ plotClusterFun2 <- function(Y,E, nt,ns, clust_res, final_model,page,limit = max(
 #' plotClusterMap(clust_res, cluster_true, map, "path/to/save/cluster_maps.jpeg")
 #' }
 #' @export
-plotClusterMap <- function(clust_res, cluster_true = NULL, map, height, filepath = file.path(path_im, 'fun_us_p1.pdf'), title = "Estimated Clusters", fill = "Estimated",palette = NULL) {
+plotClusterMap <- function(clust_res, cluster_true = NULL, map, height = NULL, filepath = NULL, title = "Estimated Clusters", fill = "Estimated",palette = NULL) {
   # Plot for estimated clusters
   letters <- LETTERS
   p2 <- ggplot(map) +
@@ -208,9 +208,9 @@ plotClusterMap <- function(clust_res, cluster_true = NULL, map, height, filepath
   } else {
     p <- p2
   }
-
-  # Save the plot
-  ggsave(filename = filepath, plot = p, device = "pdf", width = 8.27, height = height)
+  if(!is.null(filepath)){
+    ggsave(filename = filepath, plot = p, device = "pdf", width = 8.27, height = height)
+  }
 
   return(p)
 }
@@ -406,7 +406,7 @@ funInterval <- function(k,final_model, fun){
 #' }
 #'
 #' @export
-plotGraph <- function(map, coords, graph0, title, filepath){
+plotGraph <- function(map, coords, graph0, title, filepath = NULL){
   p = ggraph(graph0, layout = 'manual', x = coords[,1], y = coords[,2]) +
     geom_edge_link() +
     geom_node_point(color = 'red', size = 3) +

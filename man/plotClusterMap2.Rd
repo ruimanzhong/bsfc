@@ -7,6 +7,7 @@
 plotClusterMap2(
   cluster_res,
   map,
+  height = 8,
   filepath = file.path(path_im, "fun_us_p1.pdf"),
   title = "Estimated clusters",
   fill = "Cluster",
