@@ -20,5 +20,5 @@ You can install the development version of `bsfc` from GitHub with:
 
 ```r
 # install.packages("devtools")
-devtools::install_github("ruimanzhong/bsfc", force = TRUE, build_vignette = F)
+devtools::install_github("ruimanzhong/bsfc", build_vignette = F)
 
