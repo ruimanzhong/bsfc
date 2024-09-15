@@ -15,7 +15,6 @@
 #' @param thin Integer, thinning interval for recording the results.
 #' @param path_save Character, the path where results should be saved.
 #' @param seed Integer, seed value for random number generation, defaults to 1234.
-#' @param test Bool, if print membership
 #'
 #' @return NULL The function primarily outputs results to a specified path and does not return anything.
 #'
@@ -60,7 +59,7 @@ bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), 
   ## Initialize
 
   # initialize log likelihood vector
-  log_mlike_vec <- log_mlik_all(Y, cluster, X, N, formula, family, correction,test,...)
+  log_mlike_vec <- log_mlik_all(Y, cluster, X, N, formula, family, correction,...)
   log_mlike <- sum(log_mlike_vec)
 
   # whether an edge in graph is within a cluster or bewteen two clusters
@@ -312,7 +311,7 @@ bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), 
 #' @export
 continue_bsfc <- function(result, Y, X = NULL, N = NULL, graph,
                           formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.5),
-                          correction = FALSE, niter = 100, burnin = 0, thin = 1, path_save = NULL, ...) {
+                          correction = FALSE, niter = 100, burnin = 0, thin = 1, path_save = NULL,nsave = 10, ...) {
   n <- length(result[["mst"]])
   cluster <- result[['cluster']][n,]
   mst <- result[["mst"]][[n]]
@@ -320,6 +319,6 @@ continue_bsfc <- function(result, Y, X = NULL, N = NULL, graph,
   bsfc(Y,
     graphdata = list(graph = graph, mst = mst, cluster = cluster), X = X, N = N,
     formula, family = family, hyperpar = list(c = c),
-    correction , niter = niter, burnin = burnin, thin = thin, path_save = path_res
+    correction , niter = niter, burnin = burnin, thin = thin, path_save = path_save, nsave = nsave
   )
 }

@@ -1,0 +1,100 @@
+---
+title: "Bsfclust-Modeling"
+author: "Ruiman Zhong"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{1.Bsfclust-Simulated Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+We begin by loading the required packages. These packages will assist with data manipulation, visualization, and running the `bsfc` algorithm.
+
+```{r warning=FALSE, include=FALSE}
+packages <- c("gridExtra", "deldir", "fields", "igraph", 
+              "ggplot2", "Matrix.utils", "grid", "class", 
+              "spdep", 'sf', 'bsfc','cccd','ggraph','INLA')
+
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE, repos = "http://cran.us.r-project.org")
+    library(x, character.only = TRUE)
+  } else {
+    library(x, character.only = TRUE)
+  }
+})
+```
+In this vignette, we utilize the simulation data generated in the previous vignette. To load the data, we use the following command:
+```{r}
+load("~/Documents/project3/data/simulation_data.rda")
+```
+In this section, we show how to use Bsfclust algorithm to find the spatial clusters.
+
+```{r}
+nt=dim(Y)[1]; ns=dim(Y)[2]  
+## build design matrix
+time = 1:nt
+# compute fixed effects
+X = poly(time, 2, raw = TRUE, simple = TRUE)
+map <- geodata
+```
+Now, we would like to start with initializing the model parameters. We will first create 15 initial cluster from a MST. The MST is set from adjacency matrix. The weights of the MST is built from a U[0,1].
+
+
+```{r echo=TRUE, warning=FALSE}
+# Build MST 
+k =15
+seed = 43
+# create graph
+geodata = initial.mst.build(map,method='adjmat',nclust = k, weights = NULL, seed = seed)
+coords <- st_coordinates(st_centroid(map)[, 3])
+plotGraph(map,coords,geodata$graph,"Initial graph")
+```
+We could also check the initial MST and cluster memberships, by
+
+```{r fig.width=6, fig.height=4}
+plotMST(map,coords,geodata$mst,geodata$cluster, "Initial MST")
+```
+The following example demonstrates how to use the bsfc function to perform spatial functional clustering with a normal likelihood and an IID random effect model:
+```{r}
+formula= Yk~ 1+ Xk 
+
+result <- bsfc(Y, graphdata = geodata, X = X, N = NULL,
+                formula, family = "normal", hyperpar = list(c =  0.5),
+                correction = F, niter = 1000, burnin = 0, thin = 1,  path_save = NULL) 
+```
+formula defines the model where Yk is the response variable, Xk is a covariate, and f(id, model = "iid") adds a random effect for the id variable using an IID structure.
+The bsfc function is applied to the data, with Y representing the observed response data, geodata containing the graph structure, and X representing the covariate matrix.
+We specify the family as "normal", set the hyperparameter c to 0.5, and disable bias correction by setting correction = FALSE.
+The MCMC sampling process runs for 1000 iterations without burn-in, with thinning set to 1.
+
+## Evaluation of the convergency and continuation of the process
+```{r fig.width=6, fig.height=4}
+plot(result$log_mlike, type = "l", main = "Marginal Likelihoods of the Initial MCMC Run",
+     xlab = "Iteration", ylab = "Marginal Likelihood")
+```
+After checking the process, we could run the continuation of the BSFC process
+```{r}
+# the function runs for one hour
+result_continue = continue_bsfc(result,
+  Y = Y, X = X, N = NULL, graph = geodata$graph,
+  formula = formula, family = "normal", hyperpar = list(c = 0.5),
+  correction = FALSE, niter = 1000, burnin = 0, thin = 1,
+  path_save = "~/Documents/project3/data/results_conti.rda"
+)
+```
+
+```{r fig.width=6, fig.height=4}
+mlik <- c(result$log_mlike, result_continue$log_mlike)
+# Plot the updated marginal likelihoods
+plot(mlik, type = "l", main = "Marginal Likelihoods After Continued MCMC Run",
+     xlab = "Iteration", ylab = "Marginal Likelihood")
+```
+
+Print the final cluster_membership and plot.
+
+```{r fig.width=6, fig.height=4}
+clust_res = result_continue$cluster[length(result_continue$mst),]
+clust_res
+plotClusterMap(clust_res, geodata$cluster, map, NULL,title = " ",fill = "Cluster", filepath = NULL)
+```

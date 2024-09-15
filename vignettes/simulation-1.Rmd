@@ -1,0 +1,108 @@
+---
+title: "Bsfclust-Simulation"
+author: "Ruiman Zhong"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{1.Bsfclust-Simulated Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+# Simulated data
+```{r include=FALSE}
+packages <- c("dplyr", "tidyverse", "igraph", "ggplot2","grid",  'sf','ggraph')
+
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE, repos = "http://cran.us.r-project.org")
+    library(x, character.only = TRUE)
+  } else {
+    library(x, character.only = TRUE)
+  }
+})
+```
+We use Voronoi tesselation to simulate a spatial domain that will be used in our simulation
+studies. And then we transform the spatial domain to a graph with edges and vertices, to
+later obtain MST. Finally, We can create n clusters by removing n-1 edges of the MST. In
+this case, we will create 10 clusters. Firstly, we will create the areas inside the domain.
+```{r}
+set.seed(7)
+box <- st_as_sfc(st_bbox(c(xmin = 0, ymin = 0, xmax = 1, ymax = 1))) # Define a bounding box
+n <- 100
+points <- st_union(st_sample(box, size = n))
+vor <- st_voronoi(points, box)
+geodata <-st_sf(geometry = st_intersection(st_cast(vor), box))
+ggplot(geodata)+geom_sf()
+```
+
+## Create clusters
+
+Then, we transform the spatial domain to a graph with edges and vertices, to
+later obtain the minimum spanning tree (MST).
+
+```{r}
+set.seed(81)
+adj_mat <- st_touches(geodata) %>% as("matrix")
+adj_mat_weighted <- adj_mat * runif(length(adj_mat))
+graph <- graph_from_adjacency_matrix(adj_mat_weighted, mode = "upper", weighted
+= TRUE)
+mstgraph <- mst(graph)
+```
+We can create `n` clusters by removing `n-1` edges of the MST. In this case, we will create `10` clusters.
+```{r , fig.width=6, fig.height=4}
+# remove the edges with higher weights
+n = 10
+edgeid_rm <- order(E(mstgraph)$weight)[1:(n-1)]
+graph_comp <- components(delete_edges(mstgraph, edgeid_rm))
+membership <- graph_comp$membership
+geodata$cluster <- membership
+geodata$ID <- 1:100
+plot(delete_edges(mstgraph, edgeid_rm), vertex.color = hcl.colors(n, palette = "Set 2")[membership])
+```
+Let's visualize the clusters we created.
+```{r, fig.width=6, fig.height=4}
+ggplot() +
+  geom_sf(data = geodata, aes(fill = factor(cluster))) +  # Color by cluster and outline polygons
+  scale_fill_viridis_d(option = "plasma") +  # Use a color scale for the clusters
+  labs(title = "Voronoi Tessellation with MST-based Clusters", fill = "Cluster") +
+  theme_minimal()
+```
+The next step is to generate temporal data. We simulate cluster trends using the simulated
+spatial domain. The trends are created using additive effects (gam).
+```{r, fig.width=6, fig.height=4}
+time = seq(0,1,length.out = 100)
+# compute fixed effects
+X = poly(time, 2, raw = TRUE, simple = TRUE)
+beta = cbind(
+     c(1, 1), c(-1, -1),c(3,-3), c(-3,3),c(0, 0),
+     c(1, 1), c(-1, -1),c(3,-3), c(-3,3),c(0, 0)
+ )
+beta0 = - colMeans(X %*% beta)
+eta0 = rep(beta0, each = 100) + X %*% beta
+
+# visualize linear predictor for groupd
+matplot(time, eta0, xlab = "time", ylab = expression(X * beta))
+usigmas = c(0.01, 0.05, 0.02, 0.05, 0.02) 
+sigmas = c(usigmas, usigmas/4)
+```
+Add noise with respect to each cluster.
+
+```{r, fig.width=6, fig.height=4}
+Y = purrr::map(
+    1:nrow(geodata),
+    ~ eta0[, geodata$cluster[.]] + rnorm(100, mean = 0, sd = sigmas[geodata$cluster[.]])
+    )
+Y = do.call(cbind, Y)
+matplot(time, Y, type = "l", lty = 1, xlab = "time", ylab = "Obervations")
+
+# save(Y, geodata, file = "data/simulation_data.rda")
+```
+
+[Next: Modeling](modeling-2.html)

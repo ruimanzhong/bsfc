@@ -12,7 +12,6 @@
 #' @param correction Logical, indicating whether a correction should be applied to the computed log marginal likelihood; defaults to FALSE.
 #' @param detailed Logical, specifying whether to return the full model object or just the log marginal likelihood; defaults to FALSE.
 #' @param ... Additional arguments passed to the INLA function.
-#' @param test Bool, if print membership
 #'
 #' @return Depending on the `detailed` parameter:
 #'   - If `detailed` is TRUE, returns the full `INLA` model object.
@@ -44,8 +43,7 @@
 #' }
 #' @export
 log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1 + Xk,
-                          family = "normal", correction = FALSE, detailed = FALSE, test = F,...) {
-  if(test){print(k)}
+                          family = "normal", correction = FALSE, detailed = FALSE,...) {
   inla_data <- prepare_data_each(k, Y, membership, X, N)
   if (family == "poisson") {
     model <- INLA::inla(formula, family,
@@ -101,7 +99,6 @@ log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1
 #' @param correction Logical indicating whether a correction for dispersion or other factors
 #'        should be applied. Defaults to FALSE.
 #' @param ... Additional arguments passed to the underlying `log_mlik_each` function.
-#' @param test Bool, if print membership
 #'
 #' @details This function iterates over the unique clusters defined in the `membership` vector and
 #'          calculates the log marginal likelihood for each cluster using the `log_mlik_each` function.
@@ -119,9 +116,9 @@ log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1
 #'
 #' @export
 log_mlik_all <- function(Y, membership, X = NULL, N = NULL, formula = Yk ~ 1 + Xk,
-                         family = "normal", correction = FALSE,test = F, ...) {
+                         family = "normal", correction = FALSE, ...) {
   k <- max(membership)
-  sapply(1:k, log_mlik_each, Y, membership, X, N, formula, family, correction, FALSE, test,...)
+  sapply(1:k, log_mlik_each, Y, membership, X, N, formula, family, correction, FALSE, ...)
 }
 
 ##############################################################

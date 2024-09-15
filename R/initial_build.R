@@ -30,7 +30,7 @@
 #' @export
 initial.mst.build <- function(map, method = 'knn', para = 10, nclust = 10, weights = NULL, seed = 1234){
   set.seed(seed)
- coords <- st_coordinates(st_centroid(map)[, 3])
+ coords <- st_coordinates(st_centroid(map))
  ns <- dim(coords)[1]
  graph0 <- ConstructGraph0(map, method = method, para = para)
  if (is.null(weights) & is.null(graph0$weight)) {
