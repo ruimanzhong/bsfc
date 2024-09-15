@@ -11,11 +11,6 @@ vignette: >
 
 # Introduction
 
-<!-- Paula
-Talk about functional disease clustering in general.
-Then talk about how the bsfc package is useful to detect clusters.
-Then put this paragraph about a particular example in disease mapping.
--->
 
 Disease clustering, particularly functional disease clustering, plays a crucial role in identifying patterns that help in understanding and managing health crises. By grouping regions with similar disease trajectories, it becomes possible to detect early signs of outbreaks and allocate resources effectively. Functional clustering, in particular, captures changes over time, adding an additional layer of insight into disease progression.
 
@@ -26,21 +21,15 @@ Compared to traditional spatial clustering methods, `bsfclust` offers greater fl
 This vignette demonstrates how to use the `bsfclust` package to perform Bayesian spatial functional clustering on COVID-19 data from the United States, illustrating its application to disease mapping.
 
 # Loading Necessary Packages
-<!-- Paula
-Add how to install the development version of the package from GitHub.
--->
 
-<!-- Paula
-Add that you need INLA and say how to install it
--->
 # Installation
 To install the development version of the `bsfclust` package from GitHub, you can use the following command:
-```{r}
+```{r eval=FALSE}
 # Install development version from GitHub
 devtools::install_github("RuimanZhong/bsfc")
 ```
 Additionally, the package relies on INLA (Integrated Nested Laplace Approximations) for its computations. To install INLA, run the following:
-```{r}
+```{r eval=FALSE}
 # Install INLA
 install.packages("INLA", repos = c(getOption("repos"),
                                    INLA = "https://inla.r-inla-download.org/R/stable"),
@@ -65,11 +54,6 @@ package.check <- lapply(packages, FUN = function(x) {
 })
 ```
 # Loading and Preparing the Data
-
-<!-- Paula
-Add spatial and temporal resolution of the data.
-Add the original source of the data
--->
 
 We will use a pre-processed dataset that contains COVID-19 case counts (`Y`), population data (`N`), and a `map` object representing the spatial layout of the regions. The data covers both spatial and temporal dimensions, focusing on the weekly COVID-19 cases across 49 states in the U.S (Hawaii and Alaska are not included) during the 2020 (51 weeks in total). Each state’s infection data is captured over time to identify how the pandemic evolved geographically. 
 

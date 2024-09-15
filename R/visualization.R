@@ -191,7 +191,7 @@ plotClusterMap <- function(clust_res, cluster_true = NULL, map, height = NULL, f
   # Plot for true clusters (if provided)
   if (!is.null(cluster_true)) {
     p1 <- ggplot(map) +
-      geom_sf(aes(fill = cluster_true))  +  # Apply your custom color palette
+      geom_sf(aes(fill = factor(cluster_true)))  +  # Apply your custom color palette
       theme_bw() +
       theme( # Larger title font size
         axis.title = element_blank(),         # No axis titles

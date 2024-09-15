@@ -81,16 +81,16 @@ time = seq(0,1,length.out = 100)
 # compute fixed effects
 X = poly(time, 2, raw = TRUE, simple = TRUE)
 beta = cbind(
-     c(1, 1), c(-1, -1),c(3,-3), c(-3,3),c(0, 0),
-     c(1, 1), c(-1, -1),c(3,-3), c(-3,3),c(0, 0)
- )
+    c(1, 0), c(-1, 0), c(0, 0), c(-3, 3), c(3, -3),
+    c(1, 0), c(-1, 0), c(0, 0), c(-3, 3), c(3, -3)
+)
 beta0 = - colMeans(X %*% beta)
 eta0 = rep(beta0, each = 100) + X %*% beta
 
 # visualize linear predictor for groupd
 matplot(time, eta0, xlab = "time", ylab = expression(X * beta))
-usigmas = c(0.01, 0.05, 0.02, 0.05, 0.02) 
-sigmas = c(usigmas, usigmas/4)
+usigmas = c(0.01, 0.05, 0.02, 0.05, 0.02) * 2
+sigmas = c(usigmas, usigmas / 4)
 ```
 Add noise with respect to each cluster.
 
@@ -102,7 +102,7 @@ Y = purrr::map(
 Y = do.call(cbind, Y)
 matplot(time, Y, type = "l", lty = 1, xlab = "time", ylab = "Obervations")
 
-# save(Y, geodata, file = "data/simulation_data.rda")
+# save(Y, geodata, file = "~/Documents/project3/data/simulation_data.rda")
 ```
 
 [Next: Modeling](modeling-2.html)
