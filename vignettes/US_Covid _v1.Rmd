@@ -11,11 +11,44 @@ vignette: >
 
 # Introduction
 
-Disease surveillance relies heavily on accurately interpreting patterns to understand disease stages, manage, and prevent health crises. One important task is to detect neighboring regions with similar disease risks, aiding in identifying populations with high exposure, uncovering inequalities, and allocating resources based on risk levels. This vignette demonstrates how to use the `bsfc` package to perform Bayesian spatial functional clustering on COVID-19 data from the United States.
+<!-- Paula
+Talk about functional disease clustering in general.
+Then talk about how the bsfc package is useful to detect clusters.
+Then put this paragraph about a particular example in disease mapping.
+-->
+
+Disease clustering, particularly functional disease clustering, plays a crucial role in identifying patterns that help in understanding and managing health crises. By grouping regions with similar disease trajectories, it becomes possible to detect early signs of outbreaks and allocate resources effectively. Functional clustering, in particular, captures changes over time, adding an additional layer of insight into disease progression.
+
+The `bsfclust` package provides tools for Bayesian spatial functional clustering, which is especially useful in detecting clusters of neighboring regions with similar disease risks. These clusters can help uncover inequalities and guide the distribution of health resources based on risk levels.
+
+Compared to traditional spatial clustering methods, `bsfclust` offers greater flexibility by allowing each cluster to have its own unique parameters, offering a more adaptable model. Additionally, the number of clusters is not restricted by their size or shape, and spatial contiguity is ensured by the initial full graph structure. The method also supports the analysis of non-Gaussian data, with latent functions represented by different processes, making it suitable for a wide range of applications.
+
+This vignette demonstrates how to use the `bsfclust` package to perform Bayesian spatial functional clustering on COVID-19 data from the United States, illustrating its application to disease mapping.
 
 # Loading Necessary Packages
+<!-- Paula
+Add how to install the development version of the package from GitHub.
+-->
 
-We begin by loading the required packages. These packages will assist with data manipulation, visualization, and running the `bsfc` algorithm.
+<!-- Paula
+Add that you need INLA and say how to install it
+-->
+# Installation
+To install the development version of the `bsfclust` package from GitHub, you can use the following command:
+```{r}
+# Install development version from GitHub
+devtools::install_github("RuimanZhong/bsfc")
+```
+Additionally, the package relies on INLA (Integrated Nested Laplace Approximations) for its computations. To install INLA, run the following:
+```{r}
+# Install INLA
+install.packages("INLA", repos = c(getOption("repos"),
+                                   INLA = "https://inla.r-inla-download.org/R/stable"),
+                 dependencies = TRUE)
+# Install Matrix.urils
+remotes::install_github("cvarrichio/Matrix.utils") 
+```
+We begin by loading the required packages. These packages will assist with data manipulation, visualization, and running the `bsfclust` algorithm.
 
 ```{r include=FALSE}
 packages <- c("gridExtra", "deldir", "fields", "igraph", 
@@ -31,19 +64,29 @@ package.check <- lapply(packages, FUN = function(x) {
   }
 })
 ```
-
 # Loading and Preparing the Data
 
-We will use a pre-processed dataset that contains COVID-19 case counts (`Y`), population data (`N`), and a `map` object representing the spatial layout of the regions.
+<!-- Paula
+Add spatial and temporal resolution of the data.
+Add the original source of the data
+-->
 
-The data is stored in `.rds` format and will be loaded for analysis.
+We will use a pre-processed dataset that contains COVID-19 case counts (`Y`), population data (`N`), and a `map` object representing the spatial layout of the regions. The data covers both spatial and temporal dimensions, focusing on the weekly COVID-19 cases across 49 states in the U.S (Hawaii and Alaska are not included) during the 2020 (51 weeks in total). Each state’s infection data is captured over time to identify how the pandemic evolved geographically. 
 
+The dataset is stored in `.rds` format, pre-processed for this analysis. It contains 4 lists, with `Y` and `N` are t $\times$ s matrixs, where $Y{[i,t]}$ represents the new cases in j week in the state i, and $N{[i,t]}$ is the population size in j week in the state i. The dimension of matrix `Y` and `N` are the same
 ```{r}
 data("us_covid_clean")
-
-# Extract relevant information from the dataset
 Y <- as.matrix(us_covid_clean$Y)   # COVID-19 case counts
-N <- us_covid_clean$N              # Population data
+dim(Y)
+N <- us_covid_clean$N  
+dim(N)
+```
+
+Our primary objective is to find groups of neighboring states that experienced similar COVID-19 transmission patterns at the start of the pandemic. Thus, we compute the expected cases `E`. 
+
+```{r}
+# Extract relevant information from the dataset
+Y <- as.matrix(us_covid_clean$Y)   # COVID-19 case counts            # Population data
 ratio <- colMeans(Y / N)           # Calculate the ratio of cases to population
 E <- sweep(N, MARGIN = 2, STATS = ratio, `*`) # Expected counts based on population
 nt <- dim(N)[1]                    # Number of time points
@@ -73,22 +116,28 @@ plotMST(map,coords,geodata$mst,geodata$cluster, "Initial MST")
 
 The plot illustrates that we have 10 initial clusters. 
 
+
 Next, we will define the formula for the Bayesian spatial functional with-cluster model. Here we use AR 1 model, where `Yk` is the response of each cluster (Covid cases in the US), and `Xk` is the random effect. If covariates are provided, we could include them in the fixed effect. The package supports common model that `R-INLA` supports. For more information, please check `R-INLA`.
+$$Y_{it} \mid \mu_{it}, \boldsymbol{\theta}_{\mathcal{T}} ~\stackrel{ind}{\sim}~ \text{Poisson}(E_{i} \times \mu_{it})$$
+$$\log(\mu_{it}) = \eta_{it} = \alpha_{c_i} + f_{c_i,t} + \epsilon_{it}, ~\text{where}~ \epsilon_{it} \mid \boldsymbol{\theta}_{\mathcal{T}} {\sim} \mathcal{N}(0, 1/\tau_{c_i}^2),$$
+$$f_{c,1} \mid v_{c}, \rho_{c}, \boldsymbol{\theta}_{\mathcal{T}} \sim \mathcal{N}(0, v_{c}^{-1}(1-\rho_{c}^2)^{-1}), ~~\text{for}~~ c = 1, \dots, C,$$
+$$f_{c, t} = \rho_{c} f_{c, t-1} + \varepsilon_{c,t} ~\text{for}~ t = 2, \dots, T~\text{where}~ \varepsilon_{c,t} \mid \boldsymbol{\theta}_{\mathcal{T}} \sim \mathcal{N}(0, v_{c}^{-1})$$
 ```{r}
 # Define the formula for the Bayesian spatial functional model
 formula <- Yk ~ f(Xk, model = "ar", order = 1) + f(id, model = "iid")
 ```
  
  `bsfc` is the main functions to implement Bayesian spatial functional clustering based on bayesian spanning tree.  `Y` is the response, here is the Covid cases in the US. X is the random effect vector, referring to the `Xk` of the formula. We fit a `poisson` likelihood with the offset  `N` = E, where E is the expected cases. Hyperparameter `c` describe the penalty of the number of the final cluster, ranging from 0 to 1. We don't need any correction when using ar model. We will run `nter` = 1000 MCMC chain, without burn-in procedure. 
+
  
- The results of the function is saved in the path_res.rds. Please define a valid address and name before running the function.
+ The results of the function is saved in the path_res.rds. Please define a valid address and name before running the function. The function also return the results. 
  
 ```{r eval=FALSE}
-# define the path to save the final results, euns for one hour
+# define the path to save the final results, runs for one hour
 path <- '~/Documents/project3'
 path_res <- file.path(path, "data", "result","US_cluster.rds")
 # Run the bsfc algorithm with the defined parameters
-bsfc(Y, graphdata = geodata, X = time, N = E, formula = formula, 
+result <- bsfc(Y, graphdata = geodata, X = time, N = E, formula = formula, 
      family = "poisson", hyperpar = list(c = 0.5), 
      correction = FALSE, niter = 1000, burnin = 0, 
      thin = 1, path_save = path_res)
@@ -196,6 +245,5 @@ g = p  +
 g
 ```
 
-# Conclusion
 
 
