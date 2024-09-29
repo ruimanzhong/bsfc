@@ -3,7 +3,7 @@
 export(ConstructGraph0)
 export(bsfc)
 export(continue_bsfc)
-export(initial.mst.build)
+export(initial_cluster)
 export(log_mlik_all)
 export(log_mlik_each)
 export(log_mlik_ratio)

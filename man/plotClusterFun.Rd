@@ -6,10 +6,12 @@
 \usage{
 plotClusterFun(
   Y,
-  E,
+  N = NULL,
+  link,
   nt,
   ns,
   clust_res,
+  cluster_k,
   final_model,
   height = 8,
   ncol = 3,
@@ -20,8 +22,6 @@ plotClusterFun(
 \arguments{
 \item{Y}{Numeric matrix containing the data to be plotted, with each column representing a different time series.}
 
-\item{E}{Numeric matrix of expected cases}
-
 \item{nt}{Integer, the number of time points.}
 
 \item{clust_res}{Numeric vector containing cluster assignments for each time series in Y.}
@@ -31,6 +31,8 @@ plotClusterFun(
 \item{height}{plot height}
 
 \item{filepath}{Character string, the name of the file where the plot will be saved.}
+
+\item{E}{Numeric matrix of expected cases}
 }
 \value{
 Invisible NULL. The function's primary output is a graphical file saved to the specified location.

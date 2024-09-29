@@ -12,12 +12,13 @@ continue_bsfc(
   graph,
   formula = Yk ~ 1 + Xk,
   family = "normal",
-  hyperpar = list(c = 0.5),
+  q = 0.5,
   correction = FALSE,
   niter = 100,
   burnin = 0,
   thin = 1,
   path_save = NULL,
+  nsave = 10,
   ...
 )
 }
@@ -37,7 +38,7 @@ families like binomial (default is \code{NULL}).}
 \item{family}{Character string specifying the family of distributions to use for the model.
 Defaults to "normal".}
 
-\item{hyperpar}{List of hyperparameters used in the model; defaults to a list with \code{c = 0.5}.}
+\item{q}{q is the penalty of the number of cluster}
 
 \item{correction}{Logical indicating whether correction for overdispersion or other factors
 should be applied. Defaults to \code{FALSE}.}
@@ -73,7 +74,7 @@ the analysis without restarting the process, thereby saving computational resour
 \dontrun{
 continue_bsfc(result,
   Y = data$response, X = data$covariates, N = data$trials,
-  formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.1),
+  formula = Yk ~ 1 + Xk, family = "normal", q = 0.5,
   correction = TRUE, niter = 500, burnin = 50, thin = 5,
   path_save = "path/to/continue_results/"
 )

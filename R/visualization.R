@@ -30,38 +30,47 @@
 #' plotClusterFun(Y, 50, cluster_results, models, "path/to/save/cluster_plot.jpeg")
 #' }
 #' @export
-plotClusterFun <- function(Y,E, nt,ns, clust_res, final_model,height = 8,ncol = 3,  linetype = 1, filepath) {
-  level <- as.numeric(levels(as.factor(clust_res)))
-  ydf = setNames(as.data.frame(Y / E), 1:ns) |>
+plotClusterFun <- function(Y, N = NULL, link, nt,ns, clust_res,cluster_k, final_model,height = 8,ncol = 3,  linetype = 1, filepath) {
+  # Define link functions
+  link_function <- switch(link,
+                          "exp" = exp,
+                          "sigmoid" = function(x) 1 / (1 + exp(-x)),
+                          "identity" = function(x) x,
+                          stop("Invalid link function provided. Use 'exp', 'sigmoid', or 'identity'."))
+
+  # Convert data to long format
+  ydf <- setNames(as.data.frame(Y / E), 1:ns) |>
     mutate(time = nt) |>
     tidyr::pivot_longer(1:ns, names_to = "region", names_transform = as.numeric) |>
     mutate(cluster = clust_res[region])
-  cluster2 = rep(level, table(clust_res))
-  preddf = purrr::map(level, function(x) final_model[[x]]$summary.fitted.values$mean / exp(final_model[[x]]$summary.random[['id']]$mean)) %>%
-    purrr::map(~ matrix(., nrow = length(nt))) %>%
-    do.call(cbind, .) |>
+
+  # Filter the data to plot only the selected cluster
+  ydf <- ydf |> filter(cluster == cluster_k)
+
+  # Apply the link function to the fitted values for the selected cluster
+  preddf <- final_model[[cluster_k]]$summary.fitted.values$mean |>
+    link_function() / exp(final_model[[cluster_k]]$summary.random[['id']]$mean) |>
+    matrix(nrow = length(nt)) |>
     as.data.frame() |>
     setNames(1:ns) |>
-    mutate(time =  nt) |>
+    mutate(time = nt) |>
     tidyr::pivot_longer(1:ns, names_to = "newregion", names_transform = as.numeric) |>
-    mutate(cluster = factor(cluster2[newregion]))
-  # Define the custom labeller function
+    mutate(cluster = factor(cluster_k))
+
+  # Define the custom labeller function for clusters
   custom_labeller <- function(cluster) {
     return(paste("Cluster", cluster))
   }
 
-  # Apply the custom labeller to the facets
-  p <- ggplot(ydf) +
-    geom_line(aes(x = time, y = value, group = region), color = "gray", linewidth = 0.2) +
-    geom_line(data = preddf, aes(x = time, y = value, group = newregion),
-              color = "red", linewidth = 0.3, linetype = linetype) +
-    facet_wrap(~ cluster, ncol = ncol, scales = "free_y", labeller = labeller(cluster = as_labeller(custom_labeller))) +
-    theme_bw() +
-    theme(legend.position = "none", legend.text = element_text(size = 7)) +
-    labs(color = "Cluster", y = "Relative Risk", x = "Time")
+  # Plot the results
+  p <- ggplot() +
+    geom_line(data = ydf, aes(x = time, y = value, group = region, color = as.factor(region)), linetype = linetype) +
+    geom_line(data = preddf, aes(x = time, y = value, group = newregion, color = as.factor(newregion)), linetype = linetype, alpha = 0.6) +
+    labs(title = paste("Cluster", cluster_k), x = "Time", y = "Response") +
+    theme_minimal() +
+    facet_wrap(~ cluster, ncol = ncol, labeller = as_labeller(custom_labeller)) +
+    theme(legend.position = "none")
 
-  # Save the combined plot as a PDF using ggsave
-    ggsave(filename = filepath, plot = p, device = "pdf", width = 8.27, height = height)
 
   return(p)
 }
@@ -448,19 +457,16 @@ plotGraph <- function(map, coords, graph0, title, filepath = NULL){
 #' }
 #'
 #' @export
-plotMST <- function(map, coords, graph0, cluster, title, filepath = NULL){
+plotMST <- function(map, coords, graph0, cluster, title, height = NULL, filepath = NULL){
   V(graph0)$cluster <- as.factor(cluster)
   p = ggraph(graph0, layout = 'manual', x = coords[,1], y = coords[,2]) +
     geom_edge_link() +
     geom_node_point(aes(color = cluster), size = 3) +
     geom_sf(data = map, inherit.aes = FALSE, fill = NA) +
-    ggtitle(title)+
-    theme_minimal()+
-    theme(legend.position="none")
+    ggtitle(title)+  theme_minimal()+
+    theme(legend.position="none") + labs(x = NULL, y = NULL)
   if(!is.null(filepath)){
-    jpeg(width = 960, height = 480, filepath)
-    print(p)
-    dev.off()
+    ggsave(filename = filepath, plot = p, device = "pdf", width = 8.27, height = height)
   }
   return(p)
 }

@@ -4,7 +4,7 @@
 \alias{plotMST}
 \title{Plot a Minimum Spanning Tree on Spatial Data}
 \usage{
-plotMST(map, coords, graph0, cluster, title, filepath = NULL)
+plotMST(map, coords, graph0, cluster, title, height = NULL, filepath = NULL)
 }
 \arguments{
 \item{map}{An sf object representing the spatial data.}

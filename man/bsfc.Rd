@@ -11,28 +11,26 @@ bsfc(
   N = NULL,
   formula = Yk ~ 1 + Xk,
   family = "normal",
-  hyperpar = list(c = 0.5),
+  q = 0.5,
   correction = NULL,
   niter = 100,
   burnin = 0,
   thin = 1,
   path_save = NULL,
-  test = F,
+  nsave = 10,
   ...
 )
 }
 \arguments{
 \item{formula}{A formula object representing the model to be fitted.}
 
-\item{hyperpar}{c is the penalty of the cluster number.}
+\item{q}{q is the penalty of the cluster number.}
 
 \item{burnin}{Integer, number of burn-in iterations to discard.}
 
 \item{thin}{Integer, thinning interval for recording the results.}
 
 \item{path_save}{Character, the path where results should be saved.}
-
-\item{test}{Bool, if print membership}
 
 \item{data}{A list containing data matrices 'Y' and 'X', and 'N' for the number of trials or cases.}
 
@@ -41,8 +39,6 @@ bsfc(
 \item{init_val}{List of initial values for parameters 'trees', 'beta', and 'cluster'.}
 
 \item{MCMC}{Integer, number of MCMC iterations to perform.}
-
-\item{seed}{Integer, seed value for random number generation, defaults to 1234.}
 }
 \value{
 NULL The function primarily outputs results to a specified path and does not return anything.
@@ -64,6 +60,6 @@ init_val <- list(trees = graph, beta = runif(10), cluster = sample(1:5, 10, repl
 hyperpar <- list(c = 0.5)
 path_save <- "path/to/save/results/"
 
-bsfc(data, family, formula, graph, init_val, hyperpar, MCMC, burnin, THIN, path_save, seed = 1234)
+bsfc(data, family, formula, graph, init_val, hyperpar, MCMC, burnin, THIN, path_save)
 }
 }

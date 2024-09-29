@@ -1,6 +1,6 @@
-Package: bsfc
+Package: sfclust
 Title: Bayesian spatial functional data clustering 
-Version: 0.0.12
+Version: 0.0.13
 Authors@R: c(
     person("Ruiman", "Zhong", ,"ruiman.zhong@kaust.edu.sa", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-4681-9199")),
@@ -9,7 +9,7 @@ Authors@R: c(
     person("Paula", "Moraga", ,"paula.moraga@kaust.edu.sa", role = c("aut"),
            comment = c(ORCID = "0000-0001-5266-0201"))
            )
-Description: The package implements a Bayesian spatial functional data clustering alogrithm based on spanning tree and RJ-MCMC.
+Description: The package implements a Bayesian spatial functional data clustering algorithm based on spanning tree and RJ-MCMC.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -35,3 +35,4 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
+LazyData: true

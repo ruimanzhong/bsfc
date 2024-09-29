@@ -12,7 +12,6 @@
 #'        of neighbors (k) or a distance threshold (eps), depending on the method.
 #' @param nclust Integer, the initial number of clusters
 #' @param weights Optional numeric vector of weights for the edges in the graph. If NULL, random weights are assigned.
-#' @param seed Integer value to set the random seed for reproducibility.
 #'
 #' @return A list with two elements: 'graph0' containing the initial graph object and 'mstgraph.ini'
 #'         containing the initial minimum spanning tree computed from the graph.
@@ -22,14 +21,13 @@
 #'   library(sf)
 #'   library(igraph)
 #'   # Assuming 'map' is an sf object containing spatial data
-#'   result <- initial.mst.build(map, method = 'knn', para = 5, nclust = 5)
+#'   result <- initial_cluster(map, method = 'knn', para = 5, nclust = 5)
 #'   print(result$graph0)
 #'   print(result$mstgraph.ini)
 #' }
 #'
 #' @export
-initial.mst.build <- function(map, method = 'knn', para = 10, nclust = 10, weights = NULL, seed = 1234){
-  set.seed(seed)
+initial_cluster <- function(map, method = 'adjmat', para = NULL, nclust = 10, weights = NULL){
  coords <- st_coordinates(st_centroid(map))
  ns <- dim(coords)[1]
  graph0 <- ConstructGraph0(map, method = method, para = para)
@@ -58,7 +56,6 @@ initial.mst.build <- function(map, method = 'knn', para = 10, nclust = 10, weigh
 #' @param method Character string specifying the method to use for graph construction.
 #'        Available methods are 'knn', 'knn_geo', 'rnn', 'rnn_geo', 'deltri', and 'adjmat'.
 #' @param para Parameter specific to the chosen method; varies by method, such as the number of neighbors or a distance threshold.
-#' @param seed Integer value to set the random seed for reproducibility.
 #'
 #' @return An igraph object representing the constructed graph.
 #'
@@ -72,8 +69,7 @@ initial.mst.build <- function(map, method = 'knn', para = 10, nclust = 10, weigh
 #'
 #' @export
 #'
-ConstructGraph0=function(map,method='knn',para = 10, seed = 1234){
-  set.seed(seed)
+ConstructGraph0=function(map,method='adjmat',para = NULL){
  coords <- st_coordinates(st_centroid(map)[, 3])
  if (method == "knn") {
    k <- para

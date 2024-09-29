@@ -1,0 +1,256 @@
+---
+title: "sfclust- Normal distributed data clustering"
+author: "Ruiman Zhong"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{1.Bsfclust-Simulated Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+# Installation
+To install the development version of the `bsfclust` package from GitHub, you can use the following command:
+```{r warning=FALSE}
+# Install development version from GitHub
+devtools::install_github("RuimanZhong/sfclust")
+```
+Additionally, the package relies on INLA (Integrated Nested Laplace Approximations) for its computations. To install INLA, run the following:
+```{r warning=FALSE}
+# Install INLA
+install.packages("INLA", repos = c(getOption("repos"),
+                                   INLA = "https://inla.r-inla-download.org/R/stable"),
+                 dependencies = TRUE)
+```
+[Next: Simulation](simulation-1.html)
+
+<div style="page-break-after: always;"></div>
+
+# Simulation
+<a id="simulation"></a>
+We begin by loading the required packages. These packages will assist with data manipulation, visualization, and running the `bsfc` algorithm.
+
+```{r warning=FALSE, include=FALSE}
+packages <- c("gridExtra", "deldir", "fields", "igraph", 
+              "ggplot2", "grid", "class", 
+              "spdep", 'sf', 'sfclust','cccd','ggraph','dplyr')
+
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE, repos = "http://cran.us.r-project.org")
+    library(x, character.only = TRUE)
+  } else {
+    library(x, character.only = TRUE)
+  }
+})
+```
+
+We use Voronoi tesselation to simulate a spatial domain that will be used in our simulation
+studies. And then we transform the spatial domain to a graph with edges and vertices, to
+later obtain MST. Finally, We can create n clusters by removing n-1 edges of the MST. In
+this case, we will create 10 clusters. Firstly, we will create the areas inside the domain.
+```{r}
+set.seed(7)
+box <- st_as_sfc(st_bbox(c(xmin = 0, ymin = 0, xmax = 1, ymax = 1))) # Define a bounding box
+n <- 100
+points <- st_union(st_sample(box, size = n))
+vor <- st_voronoi(points, box)
+geodata <-st_sf(geometry = st_intersection(st_cast(vor), box))
+ggplot(geodata)+geom_sf()
+```
+
+## Create clusters
+
+Then, we transform the spatial domain to a graph with edges and vertices, to
+later obtain the minimum spanning tree (MST).
+
+```{r}
+set.seed(81)
+adj_mat <- st_touches(geodata) %>% as("matrix")
+adj_mat_weighted <- adj_mat * runif(length(adj_mat))
+graph <- graph_from_adjacency_matrix(adj_mat_weighted, mode = "upper", weighted
+= TRUE)
+mstgraph <- mst(graph)
+```
+We can create `n` clusters by removing `n-1` edges of the MST. In this case, we will create `10` clusters.
+```{r , fig.width=6, fig.height=4}
+# remove the edges with higher weights
+n = 10
+edgeid_rm <- order(E(mstgraph)$weight)[1:(n-1)]
+graph_comp <- components(delete_edges(mstgraph, edgeid_rm))
+membership <- graph_comp$membership
+geodata$cluster <- membership
+geodata$ID <- 1:100
+plot(delete_edges(mstgraph, edgeid_rm), vertex.color = hcl.colors(n, palette = "Set 2")[membership])
+```
+Let's visualize the clusters we created.
+```{r, fig.width=6, fig.height=4}
+ggplot() +
+  geom_sf(data = geodata, aes(fill = factor(cluster))) +  # Color by cluster and outline polygons
+  scale_fill_viridis_d(option = "plasma") +  # Use a color scale for the clusters
+  labs(title = "Voronoi Tessellation with MST-based Clusters", fill = "Cluster") +
+  theme_minimal()
+```
+The next step is to generate temporal data. We simulate cluster trends using the simulated
+spatial domain. The trends are created using additive effects (gam).
+```{r, fig.width=6, fig.height=4}
+time = seq(0,1,length.out = 100)
+# compute fixed effects
+X = poly(time, 2, raw = TRUE, simple = TRUE)
+beta = cbind(
+    c(1, 0), c(-1, 0), c(0, 0), c(-3, 3), c(3, -3),
+    c(1, 0), c(-1, 0), c(0, 0), c(-3, 3), c(3, -3)
+)
+beta0 = - colMeans(X %*% beta)
+eta0 = rep(beta0, each = 100) + X %*% beta
+
+# visualize linear predictor for groupd
+matplot(time, eta0, xlab = "time", ylab = expression(X * beta))
+usigmas = c(0.01, 0.05, 0.02, 0.05, 0.02) * 2
+sigmas = c(usigmas, usigmas / 4)
+```
+Add noise with respect to each cluster.
+
+```{r, fig.width=6, fig.height=4}
+Y = purrr::map(
+    1:nrow(geodata),
+    ~ eta0[, geodata$cluster[.]] + rnorm(100, mean = 0, sd = sigmas[geodata$cluster[.]])
+    )
+Y = do.call(cbind, Y)
+matplot(time, Y, type = "l", lty = 1, xlab = "time", ylab = "Obervations")
+```
+
+[Next: Modeling](#modeling)
+
+<div style="page-break-after: always;"></div>
+
+# Modeling
+<a id="modeling"></a>
+
+In this section, we show how to use Bsfclust algorithm to find the spatial clusters.
+
+```{r}
+nt=dim(Y)[1]; ns=dim(Y)[2]  
+## build design matrix
+time = 1:nt
+# compute fixed effects
+X = poly(time, 2, raw = TRUE, simple = TRUE)
+map <- geodata
+```
+
+In this example, we assume the likelihood is normal. The model is specified as
+
+$$
+Y_{it} \mid \mu_{it}, \boldsymbol{\theta}_{\mathcal{T}} \stackrel{ind}{\sim} \text{Normal}(\mu_{it},\epsilon^2_{it} ),
+$$
+
+$$
+\mu_{it} = \alpha_{c_i} + \beta_1t_{c_i} + \beta_2 t^2_{c_i},
+$$
+
+$$
+\epsilon_{it} \mid \boldsymbol{\theta}_{\mathcal{T}} \sim \mathcal{N}(0, 1/\tau_{c_i}^2),
+$$
+
+Next, we will show how to implement our clustering algorithm step by step. 
+
+To facilitate the analysis of spatial data through clustering and network analysis, we employ the `initial_cluster()` function, which is designed to initialize a graph from spatial data and compute its MST. The primary objective is to generate a graph that captures the spatial relationships between regions, which can then be used for clustering.
+
+The function takes as input an sf object representing the spatial data (`map`), which contains connected polygons as areal data. In the function, we use adjacency matrix to construct the graph. The MST is computed from the constructed graph, which serves as the foundation for defining clusters within the spatial domain. The parameter `weights` is related to the edges weights to create MST $\mathcal{T}$, by default it is `weights = NULL`, indicating that weights are generated from U[0,1].  
+
+For instance, in our analysis, we utilize the following function call to construct the initial graph and compute the MST:
+
+
+```{r echo=TRUE, warning=FALSE}
+# Build MST 
+k =15
+set.seed(43)
+# create graph
+geodata <- initial_cluster(map, nclust = 15)
+coords <- st_coordinates(st_centroid(map)[, 3])
+plotGraph(map,coords,geodata$graph,"Initial graph")
+```
+
+In this example, with the number of clusters (`nclust`) set to 15. The output, geodata, contains both the initial graph $\mathbf{G}$ (graph0) and the MST $\mathcal{T}$ ($mstgraph\_ini$), which are essential for subsequent clustering steps.
+We could also check the initial MST and cluster memberships, by
+
+```{r fig.width=6, fig.height=4}
+plotMST(map,coords,geodata$mst,geodata$cluster, "Initial MST")
+```
+
+The following example demonstrates how to use the `bsfc()` function to perform spatial functional clustering with a normal likelihood model. The number of the clusters follows 
+$$
+\pi(C = n_{init})(1-c)^{n_{init}}
+$$
+```{r}
+formula <- Yk~ 1+ Xk 
+```
+
+We set the parameter $q = 0.5$. We executed our algorithm with 2000 iterations for the simulated data.
+```{r eval=FALSE, warning=FALSE}
+result <- bsfc(Y, graphdata = geodata, X = X, N = NULL,
+                formula, family = "normal", q = 0.5,
+                correction = F, niter = 2000, burnin = 0, thin = 1,  path_save = NULL, nsave = 50) 
+```
+
+We need a correction when using random walk model as the computing of the mariginal likelihod is based on `R-INLA`.
+
+Formula defines the model where Yk is the response variable, Xk is a covariate, and f(id, model = "iid") adds a random effect for the id variable using an IID structure.
+The bsfc function is applied to the data, with Y representing the observed response data, geodata containing the graph structure, and X representing the covariate matrix.
+We specify the family as "normal", set the hyperparameter q to 0.5, and disable bias correction by setting correction = FALSE.
+The MCMC sampling process runs for 2000 iterations without burn-in, with thinning set to 1.
+
+## Evaluation of the convergency and continuation of the process
+```{r include=FALSE}
+result <- readRDS('~/Documents/project3/data/simu_result.rds')
+```
+Because the runtime of the whole process, we provide the results here. 
+```{r fig.width=6, fig.height=4}
+plot(result$log_mlike, type = "l", main = "Marginal Likelihoods of the Initial MCMC Run",
+     xlab = "Iteration", ylab = "Marginal Likelihood")
+```
+
+
+By plotting the final cluster map in space domain and temporal domain, we find the algorithm detect the true clusters.
+
+```{r fig.width=6, fig.height=4}
+clust_res <- result$cluster[length(result$mst),]
+table(clust_res,geodata$cluster)
+plotClusterMap(clust_res, geodata$cluster, map, NULL,title = "(B) Estimated Cluster",fill = "Cluster", filepath = NULL)
+```
+
+Plot the estimated curves
+
+```{r fig.width=6, fig.height=4}
+final_model = lapply(1:max(clust_res), log_mlik_each, Y, as.numeric(clust_res), X, NULL, formula, detailed = T)
+level <- as.numeric(levels(as.factor(clust_res)))
+ydf = setNames(as.data.frame(Y), 1:ns) |>
+  mutate(time = 1:nt) |>
+  tidyr::pivot_longer(1:ns, names_to = "region", names_transform = as.numeric) |>
+  mutate(cluster = clust_res[region])
+cluster2 = rep(level, table(clust_res))
+
+preddf = purrr::map(level, function(x) final_model[[x]]$summary.fitted.values$mean) %>%
+  purrr::map(~ matrix(., nrow = nt)) %>%
+  do.call(cbind, .) |>
+  as.data.frame() |>
+  setNames(1:ns) |>
+  mutate(time = 1:nt) |>
+  tidyr::pivot_longer(1:ns, names_to = "newregion", names_transform = as.numeric) |>
+  mutate(cluster = factor(cluster2[newregion]))
+# Define the custom labeller function
+custom_labeller <- function(cluster) {
+  return(paste("Cluster", cluster))
+}
+
+# Apply the custom labeller to the facets
+p <- ggplot(ydf) +
+  geom_line(aes(x = time, y = value, group = region), color = "gray", linewidth = 0.2) +
+  geom_line(data = preddf, aes(x = time, y = value, group = newregion),
+            color = "red", linewidth = 0.3, linetype = 1) +
+  facet_wrap(~ cluster, ncol = 5, scales = "free_y", labeller = labeller(cluster = as_labeller(custom_labeller))) +
+  theme_bw() +
+  theme(legend.position = "none", legend.text = element_text(size = 7)) +
+  labs(color = "Cluster", y = "Y", x = "Time")
+p
+```
+[Next: US COVID Data](US_Covid.html)

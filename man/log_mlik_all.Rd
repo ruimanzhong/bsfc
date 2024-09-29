@@ -12,7 +12,6 @@ log_mlik_all(
   formula = Yk ~ 1 + Xk,
   family = "normal",
   correction = FALSE,
-  test = F,
   ...
 )
 }
@@ -35,8 +34,6 @@ Defaults to "normal". Other possible values include "binomial", "poisson", etc.}
 
 \item{correction}{Logical indicating whether a correction for dispersion or other factors
 should be applied. Defaults to FALSE.}
-
-\item{test}{Bool, if print membership}
 
 \item{...}{Additional arguments passed to the underlying \code{log_mlik_each} function.}
 }

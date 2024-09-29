@@ -9,12 +9,11 @@
 #' @param formula A formula object representing the model to be fitted.
 #' @param graph Initial spanning tree used for the Bayesian model.
 #' @param init_val List of initial values for parameters 'trees', 'beta', and 'cluster'.
-#' @param hyperpar c is the penalty of the cluster number.
+#' @param q q is the penalty of the cluster number.
 #' @param MCMC Integer, number of MCMC iterations to perform.
 #' @param burnin Integer, number of burn-in iterations to discard.
 #' @param thin Integer, thinning interval for recording the results.
 #' @param path_save Character, the path where results should be saved.
-#' @param seed Integer, seed value for random number generation, defaults to 1234.
 #'
 #' @return NULL The function primarily outputs results to a specified path and does not return anything.
 #'
@@ -29,11 +28,11 @@
 #' hyperpar <- list(c = 0.5)
 #' path_save <- "path/to/save/results/"
 #'
-#' bsfc(data, family, formula, graph, init_val, hyperpar, MCMC, burnin, THIN, path_save, seed = 1234)
+#' bsfc(data, family, formula, graph, init_val, hyperpar, MCMC, burnin, THIN, path_save)
 #' }
 #' @export
 bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), X = NULL, N = NULL,
-                 formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.5),
+                 formula = Yk ~ 1 + Xk, family = "normal",q = 0.5,
                  correction = NULL, niter = 100, burnin = 0, thin = 1, path_save = NULL, nsave = 10,  ...) {
   ## Setup
   # apply correction if rw effect is used
@@ -48,7 +47,7 @@ bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), 
   k <- max(cluster)
 
   # hyperparameters
-  c <- hyperpar$c
+  c <- q
 
   # movement counts
   hyper_cnt <- 0
@@ -280,7 +279,7 @@ bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), 
 #' @param formula An object of class \code{\link[stats]{formula}}, specifying the model used in the analysis.
 #' @param family Character string specifying the family of distributions to use for the model.
 #'        Defaults to "normal".
-#' @param hyperpar List of hyperparameters used in the model; defaults to a list with `c = 0.5`.
+#' @param q q is the penalty of the number of cluster
 #' @param correction Logical indicating whether correction for overdispersion or other factors
 #'        should be applied. Defaults to `FALSE`.
 #' @param niter Integer specifying the number of additional MCMC iterations to perform.
@@ -303,22 +302,22 @@ bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), 
 #' \dontrun{
 #' continue_bsfc(result,
 #'   Y = data$response, X = data$covariates, N = data$trials,
-#'   formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.1),
+#'   formula = Yk ~ 1 + Xk, family = "normal", q = 0.5,
 #'   correction = TRUE, niter = 500, burnin = 50, thin = 5,
 #'   path_save = "path/to/continue_results/"
 #' )
 #' }
 #' @export
 continue_bsfc <- function(result, Y, X = NULL, N = NULL, graph,
-                          formula = Yk ~ 1 + Xk, family = "normal", hyperpar = list(c = 0.5),
+                          formula = Yk ~ 1 + Xk, family = "normal", q = 0.5,
                           correction = FALSE, niter = 100, burnin = 0, thin = 1, path_save = NULL,nsave = 10, ...) {
   n <- length(result[["mst"]])
   cluster <- result[['cluster']][n,]
   mst <- result[["mst"]][[n]]
-  c = hyperpar$c
+  c = q
   bsfc(Y,
     graphdata = list(graph = graph, mst = mst, cluster = cluster), X = X, N = N,
-    formula, family = family, hyperpar = list(c = c),
+    formula, family = family, q = c,
     correction , niter = niter, burnin = burnin, thin = thin, path_save = path_save, nsave = nsave
   )
 }

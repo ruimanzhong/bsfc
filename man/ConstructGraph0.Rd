@@ -4,7 +4,7 @@
 \alias{ConstructGraph0}
 \title{Construct Initial Graph from Spatial Data}
 \usage{
-ConstructGraph0(map, method = "knn", para = 10, seed = 1234)
+ConstructGraph0(map, method = "adjmat", para = NULL)
 }
 \arguments{
 \item{map}{An sf object from which coordinates are extracted to construct the graph.}
@@ -13,8 +13,6 @@ ConstructGraph0(map, method = "knn", para = 10, seed = 1234)
 Available methods are 'knn', 'knn_geo', 'rnn', 'rnn_geo', 'deltri', and 'adjmat'.}
 
 \item{para}{Parameter specific to the chosen method; varies by method, such as the number of neighbors or a distance threshold.}
-
-\item{seed}{Integer value to set the random seed for reproducibility.}
 }
 \value{
 An igraph object representing the constructed graph.
