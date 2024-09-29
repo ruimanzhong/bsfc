@@ -1,0 +1,217 @@
+---
+title: "US Covid Data spatial temporal clustering"
+author: "Ruiman Zhong"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{2. sfclust - Real Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Introduction
+
+
+Disease clustering, particularly functional disease clustering, plays a crucial role in identifying patterns that help in understanding and managing health crises. By grouping regions with similar disease trajectories, it becomes possible to detect early signs of outbreaks and allocate resources effectively. Functional clustering, in particular, captures changes over time, adding an additional layer of insight into disease progression.
+
+The `bsfclust` package provides tools for Bayesian spatial functional clustering, which is especially useful in detecting clusters of neighboring regions with similar disease risks. These clusters can help uncover inequalities and guide the distribution of health resources based on risk levels.
+
+Compared to traditional spatial clustering methods, `bsfclust` offers greater flexibility by allowing each cluster to have its own unique parameters, offering a more adaptable model. Additionally, the number of clusters is not restricted by their size or shape, and spatial contiguity is ensured by the initial full graph structure. The method also supports the analysis of non-Gaussian data, with latent functions represented by different processes, making it suitable for a wide range of applications.
+
+This vignette demonstrates how to use the `bsfclust` package to perform Bayesian spatial functional clustering on COVID-19 data from the United States, illustrating its application to disease mapping.
+
+# Loading Necessary Packages
+
+We begin by loading the required packages. These packages will assist with data manipulation, visualization, and running the `bsfclust` algorithm.
+
+```{r include=FALSE}
+packages <- c("gridExtra", "deldir", "fields", "igraph", 
+              "ggplot2",  "grid", "class", "spdep", 'sf', 'sfclust','cccd','ggraph')
+
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE, repos = "http://cran.us.r-project.org")
+    library(x, character.only = TRUE)
+  } else {
+    library(x, character.only = TRUE)
+  }
+})
+```
+# Loading and Preparing the Data
+
+We will use a pre-processed dataset that contains COVID-19 case counts (`Y`), population data (`N`), and a `map` object representing the spatial layout of the regions. The data covers both spatial and temporal dimensions, focusing on the weekly COVID-19 cases across 49 states in the U.S (Hawaii and Alaska are not included) during the 2020 (51 weeks in total). Each state’s infection data is captured over time to identify how the pandemic evolved geographically. 
+
+The dataset is stored in `.rds` format, pre-processed for this analysis. It contains 4 lists, with `Y` and `N` are t $\times$ s matrixs, where $Y{[i,t]}$ represents the new cases in j week in the state i, and $N{[i,t]}$ is the population size in j week in the state i. The dimension of matrix `Y` and `N` are the same
+```{r warning=FALSE}
+data("us_covid")
+Y <- as.matrix(us_covid$Y)   # COVID-19 case counts
+head(Y)
+N <- us_covid$N  
+dim(N)
+```
+
+Our primary objective is to find groups of neighboring states that experienced similar COVID-19 transmission patterns at the start of the pandemic. Thus, we compute the expected cases `E`. 
+
+```{r}
+# Extract relevant information from the dataset
+ratio <- colMeans(Y / N)           # Calculate the ratio of cases to population
+E <- sweep(N, MARGIN = 2, STATS = ratio, `*`) # Expected counts based on population
+nt <- dim(N)[1]                    # Number of time points
+ns <- dim(N)[2]                    # Number of spatial regions
+time <- seq(0, 1, length.out = nt) # Normalized time vector
+map <- us_covid$map          # Spatial map of the regions
+```
+
+# Running the Clustering Algorithm
+
+We'll now use the `bsfc` function to perform clustering based on the preprocessed data. This step includes building a Minimum Spanning Tree (MST) and running the Bayesian spatial functional clustering algorithm.
+The function `initial.cluster ` is to build a initial partition parameters (Graph, MST, cluster). We could generate the initial graph by different ways, like Kth nearest neighbor (`method` = 'knn') or using adjacency matrix like the follwing example. The number of the initial cluster is set by `nclust`. If the `weights` = NULL, means the weights of every egdge in the initial graph is random generated from U[0,1].
+
+```{r warning=FALSE, fig.width=6, fig.height=4}
+# Initialize the graph data using Minimum Spanning Tree (MST)
+geodata <- initial_cluster (map, method = 'adjmat', nclust = 10)
+coords <- st_coordinates(st_centroid(map))
+plotGraph(map,coords,geodata$graph,"Initial graph")
+```
+
+We could also check the initial MST and cluster memberships, by
+
+```{r fig.width=6, fig.height=4}
+plotMST(map,coords,geodata$mst,geodata$cluster, " ", height = 4)
+```
+
+
+The plot illustrates that we have 10 initial clusters. 
+
+
+Next, we will define the formula for the Bayesian spatial functional with-cluster model. Here we use AR 1 model, where `Yk` is the response of each cluster (Covid cases in the US), and `Xk` is the random effect. If covariates are provided, we could include them in the fixed effect. The package supports common model that `R-INLA` supports. For more information, please check `R-INLA`.
+$$Y_{it} \mid \mu_{it}, \boldsymbol{\theta}_{T} ~\stackrel{ind}{\sim}~ \text{Poisson}(E_{i} \times \mu_{it})$$
+$$\log(\mu_{it}) = \eta_{it} = \alpha_{c_i} + f_{c_i,t} + \epsilon_{it}, ~\text{where}~ \epsilon_{it} \mid \boldsymbol{\theta}_{T} {\sim} N(0, 1/\tau_{c_i}^2),$$
+$$f_{c,1} \mid v_{c}, \rho_{c}, \boldsymbol{\theta}_{T} \sim N(0, v_{c}^{-1}(1-\rho_{c}^2)^{-1}), ~~\text{for}~~ c = 1, \dots, C,$$
+$$f_{c, t} = \rho_{c} f_{c, t-1} + \varepsilon_{c,t} ~\text{for}~ t = 2, \dots, T~\text{where}~ \varepsilon_{c,t} \mid \boldsymbol{\theta}_{T} \sim N(0, v_{c}^{-1})$$
+```{r}
+# Define the formula for the Bayesian spatial functional model
+formula <- Yk ~ f(idt, model = "ar", order = 1) + f(id, model = "iid")
+```
+ 
+ `bsfc` is the main functions to implement Bayesian spatial functional clustering based on bayesian spanning tree.  `Y` is the response, here is the Covid cases in the US. X is the random effect vector, referring to the `Xk` of the formula. We fit a `poisson` likelihood with the offset  `N` = E, where E is the expected cases. Hyperparameter `q` describe the penalty of the number of the final cluster, ranging from 0 to 1. We don't need any correction when using ar model. We will run `nter` = 1000 MCMC chain, without burn-in procedure. 
+
+ 
+ The results of the function is saved in the path_res.rds. Please define a valid address and name before running the function. The function also return the results. 
+ 
+```{r eval=FALSE}
+# define the path to save the final results, runs for one hour
+path <- '~/Documents/project3'
+path_res <- file.path(path, "data", "result","US_cluster.rds")
+# Run the bsfc algorithm with the defined parameters
+result <- bsfc(Y, graphdata = geodata, N = E, formula = formula, 
+     family = "poisson", q = 0.5, 
+     correction = FALSE, niter = 1000, burnin = 0, 
+     thin = 1, path_save = path_res)
+```
+
+# Analyzing the Results
+
+After running the model, we can analyze the results, including the final model and cluster assignments. There are five components in total in the results: the each cluster membership at each step, the related marginal likelihood at each step, the MST at each step, and the final estimated INLA model results.
+
+Let's start by loading the initial results and analyzing the MCMC chain to assess convergence.
+```{r include=FALSE}
+path <- '~/Documents/project3'
+path_res <- file.path(path, "data", "result","US_cluster.rds")
+# Load the results from the saved file
+result <- readRDS(path_res)
+```
+```{r fig.width=6, fig.height=4}
+plot(result$log_mlike, type = "l", main = "Marginal Likelihoods of the Initial MCMC Run",
+     xlab = "Iteration", ylab = "Marginal Likelihood")
+```
+
+
+The plot above shows the marginal likelihoods across iterations. If the plot indicates that the chain has not converged, we can continue the MCMC process.
+
+# Continuing the MCMC Process
+Next, we'll use the continue_bsfc function to extend the MCMC process by adding 2000 more iterations.
+```{r}
+# Define the additional MCMC settings
+niter_additional <- 3000
+time <- seq(0, 1, length.out = nt)
+path_res <- file.path(path, "data", "result","US_cluster2.rds")
+```
+Run the continuation of the BSFC process
+```{r eval=FALSE}
+# the function runs for one hour
+continue_bsfc(result,
+  Y = Y, X = time, N = E, graph = geodata$graph,
+  formula = formula, family = "poisson", q = 0.5,
+  correction = FALSE, niter = niter_additional, burnin = 0, thin = 1,
+  path_save = path_res
+)
+```
+# Analyzing the Continued Results
+
+After running the additional MCMC iterations, we can load and analyze the updated results to check for convergence.
+```{r, fig.width=6, fig.height=4}
+result_continue <- readRDS(path_res)  # Load the continued results into the workspace
+mlik <- c(result$log_mlike, result_continue$log_mlike)
+# Plot the updated marginal likelihoods
+plot(mlik, type = "l", main = "Marginal Likelihoods After Continued MCMC Run",
+     xlab = "Iteration", ylab = "Marginal Likelihood")
+```
+
+Print the final cluster_membership and plot.
+
+```{r fig.width=6, fig.height=4}
+clust_res = result_continue$cluster[length(result_continue$mst),]
+clust_res
+plotClusterMap(clust_res, NULL, map, NULL,title = " ",fill = "Cluster", filepath = NULL)
+```
+
+### Check the fitted curves and time series of each cluster
+```{r warning=FALSE, fig.width=6, fig.height=4}
+library(dplyr)
+start_date <- as.Date('2020-01-20')
+end_date <- as.Date('2021-01-04')
+
+# Generate a sequence of weekly dates
+time <- seq.Date(from = start_date, to = end_date, by = "week")
+final_model = result_continue$model
+
+level <- as.numeric(levels(as.factor(clust_res)))
+  ydf = setNames(as.data.frame(Y / E), 1:ns) |>
+    mutate(time = time) |>
+    tidyr::pivot_longer(1:ns, names_to = "region", names_transform = as.numeric) |>
+    mutate(cluster = clust_res[region])
+  cluster2 = rep(level, table(clust_res))
+  preddf = purrr::map(level, function(x) final_model[[x]]$summary.fitted.values$mean / exp(final_model[[x]]$summary.random[['id']]$mean)) %>%
+    purrr::map(~ matrix(., nrow = length(time))) %>%
+    do.call(cbind, .) |>
+    as.data.frame() |>
+    setNames(1:49) |>
+    mutate(time =  time) |>
+    tidyr::pivot_longer(1:49, names_to = "newregion", names_transform = as.numeric) |>
+    mutate(cluster = factor(cluster2[newregion]))
+  # Define the custom labeller function
+  custom_labeller <- function(cluster) {
+    return(paste("Cluster", cluster))
+  }
+
+  # Apply the custom labeller to the facets
+  p <- ggplot(ydf) +
+    geom_line(aes(x = time, y = value, group = region), color = "gray", linewidth = 0.2) +
+    geom_line(data = preddf, aes(x = time, y = value, group = newregion),
+              color = "red", linewidth = 0.3) +
+    facet_wrap(~ cluster, ncol = 4, scales = "free_y", labeller = labeller(cluster = as_labeller(custom_labeller))) +
+    theme_bw() +
+    theme(legend.position = "none", legend.text = element_text(size = 7)) +
+    labs(color = "Cluster", y = "Relative Risk", x = "Time")
+
+custom_breaks <- seq.Date(from = start_date, to = end_date, by = "8 weeks")
+
+g = p  +
+  scale_x_date(date_labels = "%b %d", breaks = custom_breaks) +  # Format x-axis labels to show month and day
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g
+```
+
+
+
