@@ -54,6 +54,15 @@ bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), 
   birth_cnt <- 0
   death_cnt <- 0
   change_cnt <- 0
+  
+  formula_str <- as.character(formula)
+  
+  # Replace Y and X with Yk and Xk
+  formula_str <- gsub("Y", paste0("Y", k), formula_str)
+  formula_str <- gsub("X", paste0("X", k), formula_str)
+  
+  # Convert the string back to a formula
+  new_formula <- as.formula(formula_str)
 
   ## Initialize
 
@@ -253,14 +262,19 @@ bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), 
   }
 
   p <- max(cluster)
-  final_model <- lapply(1:p, log_mlik_each, Y, cluster, X, N, formula, family, correction = F, detailed = T, ...)
+  sorted_cluster <- as.numeric(names(sort(table(cluster), decreasing = TRUE)))
+  
+  final_model <- lapply(1:p, log_mlik_each, Y, sorted_cluster, X, N, formula, family, correction = F, detailed = T, ...)
   # Final result
   output <- list(
     cluster = cluster_out, log_mlike = log_mlike_out, mst = mst_out,
     counts = c(births = birth_cnt, deaths = death_cnt, changes = change_cnt, hypers = hyper_cnt),
-    model = final_model
+    model = final_model,
+    formula = formula,
+    q = q
   )
   if (!is.null(path_save)) saveRDS(output, file = path_save)
+  class(output) <- "sfclust"
   return(output)
 }
 

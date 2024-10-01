@@ -208,14 +208,23 @@ $$
 \pi(C = n_{init})(1-c)^{n_{init}}
 $$
 ```{r}
-formula <- Yk~ 1+ Xk 
+formula <- Y ~ 1+ X
 ```
 
 We set the parameter $q = 0.5$. We executed our algorithm with 2000 iterations for the simulated data.
 ```{r eval=FALSE, warning=FALSE}
 result <- bsfc(Y, graphdata = geodata, X = X, N = NULL,
                 formula, family = "normal", q = 0.5,
-                correction = F, niter = 2000, burnin = 0, thin = 1,  path_save = NULL, nsave = 50) 
+                correction = F, niter = 100, burnin = 0, thin = 1,  path_save = NULL, nsave = 50) 
+```
+
+We could check the basic information of the result by following summary function `summary.sfclust`, we summary the model of the first `a` clusters.
+
+```{r}
+class(result)
+summary(result, a = 1)
+print(result)
+plot(result,map,k = 100)
 ```
 
 We need a correction when using random walk model as the computing of the mariginal likelihod is based on `R-INLA`.
