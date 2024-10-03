@@ -1,11 +1,15 @@
-#' Initialize Graph and Compute Minimum Spanning Tree
+#' Initialize clusters for spatial clustering
 #'
-#' This function creates a graph from spatial data using various methods and computes its minimum spanning tree (MST).
-#' It is designed to handle spatial data for clustering or network analysis, supporting multiple graph construction methods.
+#' Creates a undirected graph from spatial polygonal data, computes its minimum spanning
+#' tree (MST) and initialise the `nclust` clusters.
 #'
-#' @param x An sf object representing the spatial data, from which coordinates are extracted.
-#' @param nclust Integer, the initial number of clusters
-#' @param weights Optional numeric vector of weights for the edges in the graph. If NULL, random weights are assigned.
+#' @param x An `sf` or `sfc` object representing the spatial polygonal data. Additionally,
+#' it can also be a `matrix` or `Matrix` object with non-zero values representing the
+#' weighted connectivity between units.
+#' @param nclust Integer, the initial number of clusters.
+#' @param weights Optional `numeric` vector or `matrix` of weights between units in `x`.
+#' It should be of dimension `n^2`, where `n` is the number of units in `x`. If NULL,
+#' random weights are assigned.
 #'
 #' @return A list with three elements: 'graph' containing the initial undirected graph
 #' object, 'mst' containing the initial minimum spanning tree, and 'cluster' containing
