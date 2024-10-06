@@ -9,8 +9,7 @@
 
 #### Generate clusters for the simulation data
 
-GenerateClust <- function(coord, clustsize, seed = seed) {
-  set.seed(seed)
+GenerateClust <- function(coord, clustsize) {
   ns <- nrow(coord)
   graph0 <- ConstructGraph0(coord, method = "knn", 10)
   E(graph0)$weights <- runif(length(E(graph0)))
@@ -30,8 +29,7 @@ GenerateClust <- function(coord, clustsize, seed = seed) {
 
 ### Unbalanced clusters
 
-GenerateClust_unbalanced <- function(coord, clustsize, seed = seed) {
-  set.seed(seed)
+GenerateClust_unbalanced <- function(coord, clustsize) {
   ns <- nrow(coord)
   graph0 <- ConstructGraph0(coord, method = "knn", 10)
   E(graph0)$weights <- runif(length(E(graph0)))

@@ -30,9 +30,10 @@
 #' b0 <- 0.1
 #'
 #' # Define a formula, the name of the iid random effec should be idx
-#' formula <- Yk ~ 1 + Xk + f(idx,
-#'   model = "iid",
-#'   hyper = list(prec = list(prior = "loggamma", param = c(a0, b0)))
+#' formula <- Yk ~ 1 + Xk + f(
+#'   idx,
+#'   model <- "iid",
+#'   hyper <- list(prec = list(prior = "loggamma", param = c(a0, b0)))
 #' )
 #' formula <- Yk ~ 1 + Xk + f(idx, model = "iid", hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
 #' formula <- Yk~ 1 + f(Xk, model = "rw1", scale.model = TRUE, hyper = list(theta = list(prior = "pc.prec", param = c(1, 0.01)))) +
@@ -43,7 +44,7 @@
 #' }
 #' @export
 log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1 + Xk,
-                          family = "normal", correction = FALSE, detailed = FALSE,...) {
+                          family = "normal", correction = FALSE, detailed = FALSE, ...) {
   inla_data <- prepare_data_each(k, Y, membership, X, N)
   if (family == "poisson") {
     model <- INLA::inla(formula, family,
@@ -160,31 +161,33 @@ prepare_data_each <- function(k, Y, membership, X = NULL, N = NULL) {
 ##############################################################
 
 ## Auxiliary function to correct the marginal likelihood of INLA model
-get_structure_matrix = function (model, formula) {
-
+get_structure_matrix <- function(model, formula) {
   # prior diagonal
   prior_diagonal <- model[[".args"]][["control.compute"]][["control.gcpo"]][["prior.diagonal"]]
 
   # model config
-  model = model[["misc"]][["configs"]]
+  model <- model[["misc"]][["configs"]]
 
   # effects dimension information
-  x_info = model[["contents"]]
-  ef_start = setNames(x_info$start[-1] - x_info$length[1], x_info$tag[-1])
-  ef_end = ef_start + x_info$length[-1] - 1
+  x_info <- model[["contents"]]
+  ef_start <- setNames(x_info$start[-1] - x_info$length[1], x_info$tag[-1])
+  ef_end <- ef_start + x_info$length[-1] - 1
 
   # select effect that requires correction
-  # fs = as.list(attr(terms(formula), "variables"))[c(-1,-2)]
-  # pattern <- "f\\((\\w+),[^,]+, model = \"rw\\d*\""
-  # results <- stringr::str_extract_all(sapply(fs, deparse))
-  fs_vars <- "idt"
+  fs <- as.list(attr(terms(formula), "variables"))[c(-1, -2)]
+
+  # Modify the regular expression to handle cases with or without spaces around the assignment
+  fs_rw <- grepl("model\\s*=\\s*\"rw", sapply(fs, deparse))
+
+  fs_vars <- sapply(fs, all.vars)[fs_rw]
 
   # provide structure matrix for selected effects
   ind <- which.max(sapply(model[["config"]], function(x) x$log.posterior))
 
-  out = list()
+  out <- list()
   for (x in fs_vars) {
-    i = ef_start[x]; j = ef_end[x]
+    i <- ef_start[x]
+    j <- ef_end[x]
     Qaux <- model[["config"]][[ind]][["Qprior"]][i:j, i:j]
     Matrix::diag(Qaux) <- Matrix::diag(Qaux) - prior_diagonal
     Qaux <- Qaux /
