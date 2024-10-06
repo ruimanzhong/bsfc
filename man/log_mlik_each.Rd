@@ -60,9 +60,10 @@ a0 <- 0.1
 b0 <- 0.1
 
 # Define a formula, the name of the iid random effec should be idx
-formula <- Yk ~ 1 + Xk + f(idx,
-  model = "iid",
-  hyper = list(prec = list(prior = "loggamma", param = c(a0, b0)))
+formula <- Yk ~ 1 + Xk + f(
+  idx,
+  model <- "iid",
+  hyper <- list(prec = list(prior = "loggamma", param = c(a0, b0)))
 )
 formula <- Yk ~ 1 + Xk + f(idx, model = "iid", hyper = list(prec = list(prior = "loggamma", param = c(a0, b0))))
 formula <- Yk~ 1 + f(Xk, model = "rw1", scale.model = TRUE, hyper = list(theta = list(prior = "pc.prec", param = c(1, 0.01)))) +

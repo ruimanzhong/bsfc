@@ -15,18 +15,12 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Imports:
-    ggplot2,
-    dplyr,
     igraph,
     sf,
     SparseM,
-    cccd,
-    spgwr,
-    spdep
 Suggests:
     gridExtra,
     deldir,
-    Matrix.utils,
     grid,
     class,
     INLA,
