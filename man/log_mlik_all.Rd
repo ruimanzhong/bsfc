@@ -9,7 +9,7 @@ log_mlik_all(
   membership,
   X = NULL,
   N = NULL,
-  formula = Yk ~ 1 + Xk,
+  formula = Y ~ 1 + X,
   family = "normal",
   correction = FALSE,
   ...
@@ -27,7 +27,7 @@ and columns represent different variables.}
 distributions like binomial (default is NULL).}
 
 \item{formula}{An object of class \code{\link[stats]{formula}} specifying the model to be used in INLA.
-Default is \code{Yk ~ 1 + Xk}, which can be adjusted based on the model requirements.}
+Default is \code{Y ~ 1 + X}, which can be adjusted based on the model requirements.}
 
 \item{family}{Character string specifying the family of distributions to use for the model.
 Defaults to "normal". Other possible values include "binomial", "poisson", etc.}

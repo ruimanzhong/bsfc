@@ -48,19 +48,19 @@ log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1
   inla_data <- prepare_data_each(k, Y, membership, X, N)
   if (family == "poisson") {
     model <- INLA::inla(formula, family,
-      E = Nk,
+      E = N,
       data = inla_data, control.predictor = list(compute = TRUE),
       control.compute = list(config = TRUE), ...
     )
   } else if (family == "binomial") {
     model <- INLA::inla(formula, family,
-      Ntrials = Nk,
+      Ntrials = N,
       data = inla_data, control.predictor = list(compute = TRUE),
       control.compute = list(config = TRUE), ...
     )
   } else if (family == "nbinomial") {
     model <- INLA::inla(formula, family,
-      control.family = list(variant = 1), Ntrials = Nk,
+      control.family = list(variant = 1), Ntrials = N,
       data = inla_data, control.predictor = list(compute = TRUE),
       control.compute = list(config = TRUE), ...
     )
@@ -94,7 +94,7 @@ log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1
 #' @param N Optional numeric vector indicating the number of trials or cases, relevant for
 #'        distributions like binomial (default is NULL).
 #' @param formula An object of class \code{\link[stats]{formula}} specifying the model to be used in INLA.
-#'        Default is `Yk ~ 1 + Xk`, which can be adjusted based on the model requirements.
+#'        Default is `Y ~ 1 + X`, which can be adjusted based on the model requirements.
 #' @param family Character string specifying the family of distributions to use for the model.
 #'        Defaults to "normal". Other possible values include "binomial", "poisson", etc.
 #' @param correction Logical indicating whether a correction for dispersion or other factors
@@ -116,7 +116,7 @@ log_mlik_each <- function(k, Y, membership, X = NULL, N = NULL, formula = Yk ~ 1
 #' }
 #'
 #' @export
-log_mlik_all <- function(Y, membership, X = NULL, N = NULL, formula = Yk ~ 1 + Xk,
+log_mlik_all <- function(Y, membership, X = NULL, N = NULL, formula = Y ~ 1 + X,
                          family = "normal", correction = FALSE, ...) {
   k <- max(membership)
   sapply(1:k, log_mlik_each, Y, membership, X, N, formula, family, correction, FALSE, ...)
@@ -153,8 +153,8 @@ prepare_data_each <- function(k, Y, membership, X = NULL, N = NULL) {
   }
 
   list(
-    Yk = Yk, Nk = Nk, id = 1:(nk * nt), idt = rep(1:nt, nk), ids = rep(1:nk, each = nt),
-    Xk = Xk
+    Y = Yk, N = Nk, id = 1:(nk * nt), idt = rep(1:nt, nk), ids = rep(1:nk, each = nt),
+    X = Xk
   )
 }
 
