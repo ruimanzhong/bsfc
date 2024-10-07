@@ -54,15 +54,6 @@ bsfc <- function(Y, graphdata = list(graph = NULL, mst = NULL, cluster = NULL), 
   birth_cnt <- 0
   death_cnt <- 0
   change_cnt <- 0
-  
-  formula_str <- as.character(formula)
-  
-  # Replace Y and X with Yk and Xk
-  formula_str <- gsub("Y", paste0("Y", k), formula_str)
-  formula_str <- gsub("X", paste0("X", k), formula_str)
-  
-  # Convert the string back to a formula
-  new_formula <- as.formula(formula_str)
 
   ## Initialize
 
