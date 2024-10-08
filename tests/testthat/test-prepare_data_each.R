@@ -1,51 +1,56 @@
+
 library(testthat)
+library(sf)
+library(sftime)
+library(dplyr)
+library(tidyr)
+
+# Create an example test for the function `prepare_data_each`
+
 test_that("prepare_data_each works as expected", {
 
-  # Example inputs
-  Y <- matrix(1:12, nrow = 4, ncol = 3)  # Response matrix (4 time points, 3 regions)
-  membership <- c(1, 2, 1)  # Membership vector
-  X <- matrix(1:8, nrow = 4, ncol = 2)  # Predictor matrix (4 time points, 2 predictors)
-  N <- c(100, 200, 300)  # Population size vector
+  # Spatial coordinates (3 regions)
+  coords <- st_sfc(st_point(c(0, 0)), st_point(c(1, 1)), st_point(c(2, 2)))
 
-  # Case 1: Test with matrix X and vector N
-  result <- prepare_data_each(k = 1, Y = Y, membership = membership, X = X, N = N)
+  # Time variable (2 time points)
+  time_var <- as.POSIXct(c('2022-01-01', '2022-01-02'))
 
-  expect_equal(result$Y, as.vector(Y[, membership == 1]))  # Check Yk
-  expect_equal(result$N, rep(N[membership == 1], each = 4))  # Check Nk (size)
-  expect_equal(result$id, 1:(sum(membership == 1) * 4))  # Check id
-  expect_equal(result$idt, rep(1:4, sum(membership == 1)))  # Check idt
-  expect_equal(result$ids, rep(1:sum(membership == 1), each = 4))  # Check ids
-  expect_equal(result$X, kronecker(rep(1, sum(membership == 1)), X))  # Check Xk
+  # Case data (for each region and time point)
+  case <- matrix(runif(6, 50, 100), nrow = 2, ncol = 3)  # 2 time points x 3 regions
+  temperature <- matrix(runif(6, 10, 20), nrow = 2, ncol = 3)
+  precipitation <- matrix(runif(6, 0, 50), nrow = 2, ncol = 3)
+  population <- matrix(runif(6, 100, 200), nrow = 2, ncol = 3)
 
-  # Case 2: Test with NULL X and vector N
-  result <- prepare_data_each(k = 2, Y = Y, membership = membership, X = NULL, N = N)
+  # Create sftime object
+  data <- st_sftime(
+    data.frame(
+      case = as.vector(case),
+      temperature = as.vector(temperature),
+      precipitation = as.vector(precipitation),
+      population = as.vector(population),
+      time = rep(time_var, each = 3)
+    ),
+    geometry = coords
+  )
 
-  expect_equal(result$Y, as.vector(Y[, membership == 2]))  # Check Yk
-  expect_equal(result$N, rep(N[membership == 2], each = 4))  # Check Nk (size)
-  expect_equal(result$id, 1:(sum(membership == 2) * 4))  # Check id
-  expect_equal(result$idt, rep(1:4, sum(membership == 2)))  # Check idt
-  expect_equal(result$ids, rep(1:sum(membership == 2), each = 4))  # Check ids
-  expect_null(result$X)  # X should be NULL
+  # Example membership vector (3 regions, 2 clusters)
+  membership <- c(1, 1, 2)
 
-  # Case 3: Test with NULL X and NULL N
-  result <- prepare_data_each(k = 1, Y = Y, membership = membership, X = NULL, N = NULL)
+  # Define the formula (as used in the question)
+  formula <- case ~ temperature + precipitation + f(idt, model = "iid")
 
-  expect_equal(result$Y, as.vector(Y[, membership == 1]))  # Check Yk
-  expect_null(result$N)  # N should be NULL
-  expect_equal(result$id, 1:(sum(membership == 1) * 4))  # Check id
-  expect_equal(result$idt, rep(1:4, sum(membership == 1)))  # Check idt
-  expect_equal(result$ids, rep(1:sum(membership == 1), each = 4))  # Check ids
-  expect_null(result$X)  # X should be NULL
+  # Call the prepare_data_each function
+  result <- prepare_data_each(k = 1, data = data, membership = membership, formula = formula)
 
-  # Case 4: Test with vector X and matrix N
-  N_matrix <- matrix(1:12, nrow = 4, ncol = 3)  # Population matrix
-  result <- prepare_data_each(k = 1, Y = Y, membership = membership, X = c(5, 10), N = N_matrix)
+  # Expected values
+  expected_nrows <- 2 * sum(membership == 1)  # 2 time points * number of regions in cluster 1
 
-  expect_equal(result$Y, as.vector(Y[, membership == 1]))  # Check Yk
-  expect_equal(result$N, as.vector(N_matrix[, membership == 1]))  # Check Nk (matrix)
-  expect_equal(result$id, 1:(sum(membership == 1) * 4))  # Check id
-  expect_equal(result$idt, rep(1:4, sum(membership == 1)))  # Check idt
-  expect_equal(result$ids, rep(1:sum(membership == 1), each = 4))  # Check ids
-  expect_equal(result$X, rep(c(5, 10), times = sum(membership == 1)))  # Check Xk
-
+  # Tests
+  expect_equal(nrow(result), expected_nrows)  # Ensure correct number of rows
+  expect_equal(result$case, as.vector(case[, membership == 1]))  # Check that case values are correct
+  expect_equal(result$temperature, as.vector(temperature[, membership == 1]))  # Check temperature
+  expect_equal(result$precipitation, as.vector(precipitation[, membership == 1]))  # Check precipitation
+  expect_equal(result$id, 1:expected_nrows)  # Check the id column
+  expect_equal(result$idt, rep(1:2, sum(membership == 1)))  # Ensure time index is correct
+  expect_equal(result$ids, rep(1:sum(membership == 1), each = 2))  # Check region ids
 })

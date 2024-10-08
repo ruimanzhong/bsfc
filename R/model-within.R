@@ -122,41 +122,6 @@ log_mlik_all <- function(Y, membership, X = NULL, N = NULL, formula = Y ~ 1 + X,
   sapply(1:k, log_mlik_each, Y, membership, X, N, formula, family, correction, FALSE, ...)
 }
 
-##############################################################
-
-## Auxiliary function to create data.frame for cluster `k`
-
-prepare_data_each <- function(k, Y, membership, X = NULL, N = NULL) {
-  ind <- which(membership == k)
-  nk <- length(ind)
-  nt <- nrow(Y)
-
-  # response
-  Yk <- as.vector(Y[, ind])
-
-  # size
-  if (is.vector(N)) {
-    Nk <- rep(N[ind], each = nt)
-  } else if (is.matrix(N)) {
-    Nk <- as.vector(N[, ind])
-  } else {
-    Nk <- NULL
-  }
-
-  # predictors
-  if (is.vector(X) | is.factor(X)) {
-    Xk <- rep(X, times = nk)
-  } else if (is.matrix(X)) {
-    Xk <- kronecker(rep(1, nk), X)
-  } else {
-    Xk <- NULL
-  }
-
-  list(
-    Y = Yk, N = Nk, id = 1:(nk * nt), idt = rep(1:nt, nk), ids = rep(1:nk, each = nt),
-    X = Xk
-  )
-}
 
 ##############################################################
 

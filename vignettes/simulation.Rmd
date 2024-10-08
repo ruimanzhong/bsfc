@@ -140,6 +140,11 @@ Y = do.call(cbind, Y)
 matplot(time, Y, type = "l", lty = 1, xlab = "time", ylab = "Obervations")
 ```
 
+Then we will create a sftime object.
+
+```{r}
+
+```
 [Next: Modeling](#modeling)
 
 <div class="page-break"></div>
@@ -209,7 +214,7 @@ We set the parameter $q = 0.5$. We executed our algorithm with 2000 iterations f
 ```{r eval=FALSE, warning=FALSE}
 result <- sfclust(Y, graphdata = geodata, X = X, N = NULL,
                 formula, family = "normal", q = 0.5,
-                correction = F, niter = 2000, burnin = 0, thin = 1,  path_save = NULL, nsave = 50) 
+                correction = F, niter = 2000, burnin = 0, thin = 1,  path_save = '~/Documents/project3/data/simu_result.rds', nsave = 50) 
 ```
 ```{r include=FALSE}
 result <- readRDS('~/Documents/project3/data/simu_result.rds')
